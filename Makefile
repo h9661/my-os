@@ -104,11 +104,11 @@ $(BUILD_DIR)/cpu.o: $(KERNEL_SRC_DIR)/cpu/cpu.c | $(BUILD_DIR)
 
 # Run the OS in QEMU
 run: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 256
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 32
 
 # Run the OS in QEMU with debugging
 debug: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 256 -s -S
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 32 -s -S
 
 # Clean build artifacts
 clean:

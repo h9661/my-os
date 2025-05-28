@@ -2,9 +2,9 @@
 
 # Compiler and linker settings
 CC = /opt/homebrew/bin/i686-elf-gcc
-CFLAGS = -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c
+CFLAGS = -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -I$(KERNEL_DIR)
 LD = /opt/homebrew/bin/i686-elf-ld
-LDFLAGS = -Ttext 0x1000 -o
+LDFLAGS = -T $(KERNEL_DIR)/kernel.ld -o
 NASM = nasm
 NASMFLAGS = -f elf32
 OBJCOPY = /opt/homebrew/bin/i686-elf-objcopy
@@ -13,23 +13,36 @@ OBJCOPY = /opt/homebrew/bin/i686-elf-objcopy
 BUILD_DIR = build
 BOOT_DIR = boot
 KERNEL_DIR = kernel
+KERNEL_SRC_DIR = $(KERNEL_DIR)/src
+KERNEL_INC_DIR = $(KERNEL_DIR)/include
 
 # Target files
-OS_IMAGE = $(BUILD_DIR)/os-image.bin
 HDD_IMAGE = $(BUILD_DIR)/hard-disk.img
 BOOT_BIN = $(BUILD_DIR)/bootloader.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
+KERNEL_ELF = $(BUILD_DIR)/kernel_elf.o
 
 # Source files
 BOOT_SRC = $(BOOT_DIR)/bootloader.asm
 KERNEL_ENTRY = $(KERNEL_DIR)/kernel_entry.asm
-KERNEL_C = $(KERNEL_DIR)/kernel.c
+KERNEL_MAIN = $(KERNEL_DIR)/kernel_main.c
+
+# Find all C source files in subdirectories
+KERNEL_C_SOURCES = $(KERNEL_MAIN) \
+                   $(KERNEL_SRC_DIR)/common/utils.c \
+                   $(KERNEL_SRC_DIR)/memory/memory.c \
+                   $(KERNEL_SRC_DIR)/vga/vga.c \
+                   $(KERNEL_SRC_DIR)/cpu/cpu.c
 
 # Object files
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
-KERNEL_C_OBJ = $(BUILD_DIR)/kernel.o
+KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
+                $(BUILD_DIR)/utils.o \
+                $(BUILD_DIR)/memory.o \
+                $(BUILD_DIR)/vga.o \
+                $(BUILD_DIR)/cpu.o
 
-.PHONY: all clean run debug bootloader kernel hdd
+.PHONY: all clean run debug bootloader kernel hdd structure help
 
 all: $(HDD_IMAGE)
 
@@ -40,13 +53,14 @@ kernel: $(KERNEL_BIN)
 hdd: bootloader kernel
 	./create_hdd.sh
 
+# Show the project structure
+structure:
+	@echo "Project structure:"
+	@find . -type f -name "*.c" -o -name "*.h" -o -name "*.asm" | grep -v build | sort
+
 # Create build directory if it doesn't exist
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
-
-# Build the final OS image
-$(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
-	cat $^ > $@
 
 # Create the hard disk image
 $(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
@@ -56,27 +70,59 @@ $(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 $(BOOT_BIN): $(BOOT_SRC) $(BOOT_DIR)/gdt.asm $(BOOT_DIR)/disk.asm | $(BUILD_DIR)
 	$(NASM) -f bin -o $@ $<
 
-# Build the kernel
-$(KERNEL_BIN): $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJ) | $(BUILD_DIR)
-	$(LD) -T $(KERNEL_DIR)/kernel.ld -o $(BUILD_DIR)/kernel_elf.o $^
-	$(OBJCOPY) -O binary $(BUILD_DIR)/kernel_elf.o $@
+# Build the kernel binary
+$(KERNEL_BIN): $(KERNEL_ELF) | $(BUILD_DIR)
+	$(OBJCOPY) -O binary $< $@
 
-# Compile kernel entry assembly
+# Link the kernel ELF
+$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJS) | $(BUILD_DIR)
+	$(LD) $(LDFLAGS) $@ $^
+
+# Build kernel entry assembly
 $(KERNEL_ENTRY_OBJ): $(KERNEL_ENTRY) | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
-# Compile kernel C code
-$(KERNEL_C_OBJ): $(KERNEL_C) | $(BUILD_DIR)
+# Build main kernel C file
+$(BUILD_DIR)/kernel_main.o: $(KERNEL_MAIN) | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
+
+# Build utils.c
+$(BUILD_DIR)/utils.o: $(KERNEL_SRC_DIR)/common/utils.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build memory.c
+$(BUILD_DIR)/memory.o: $(KERNEL_SRC_DIR)/memory/memory.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build vga.c
+$(BUILD_DIR)/vga.o: $(KERNEL_SRC_DIR)/vga/vga.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build cpu.c
+$(BUILD_DIR)/cpu.o: $(KERNEL_SRC_DIR)/cpu/cpu.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Run the OS in QEMU
+run: $(HDD_IMAGE)
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 256
+
+# Run the OS in QEMU with debugging
+debug: $(HDD_IMAGE)
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 256 -s -S
 
 # Clean build artifacts
 clean:
 	rm -rf $(BUILD_DIR)/*
 
-# Run the OS in QEMU as a hard disk
-run: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE),if=ide,index=0,media=disk
-
-# Debug with QEMU
-debug: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE),if=ide,index=0,media=disk -S -s
+# Help target
+help:
+	@echo "Available targets:"
+	@echo "  all       - Build the complete OS image"
+	@echo "  bootloader- Build only the bootloader"
+	@echo "  kernel    - Build only the kernel"
+	@echo "  hdd       - Create the hard disk image"
+	@echo "  run       - Run the OS in QEMU"
+	@echo "  debug     - Run the OS in QEMU with debugging"
+	@echo "  clean     - Remove all build artifacts"
+	@echo "  structure - Show project structure"
+	@echo "  help      - Show this help message"

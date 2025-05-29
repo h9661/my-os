@@ -1,6 +1,7 @@
 #include "../../include/interrupts/interrupts.h"
 #include "../../include/vga/vga.h"
 #include "../../include/common/utils.h"
+#include "../../include/keyboard/keyboard.h"
 
 /* Exception names */
 static const char* exception_messages[] = {
@@ -61,44 +62,30 @@ void exception_handler_common(uint32_t int_no, uint32_t err_code) {
 /* Common IRQ handler */
 void irq_handler_common(uint32_t int_no, uint32_t err_code __attribute__((unused))) {
     switch (int_no) {
-      case 0: /* IRQ 0 - Timer */
-          /* Handle timer interrupt */
-          terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
+      case 32: /* IRQ 0 - Timer */
+          /* Handle timer interrupt - comment out to reduce spam */
+          /* terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
           terminal_writestring("Timer Interrupt (IRQ 0)");
           terminal_writeline("");
-          terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+          terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK)); */
           break;
 
-      case 1: /* IRQ 1 - Keyboard */
+      case 33: /* IRQ 1 - Keyboard */
           /* Handle keyboard interrupt */
-          terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_BLUE, VGA_COLOR_BLACK));
-          terminal_writestring("Keyboard Interrupt (IRQ 1)");
-          terminal_writeline("");
+          terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK));
+          terminal_writestring("[KBD] ");
           terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
-          break;
-      
-      case 16: /* IRQ 16 - Serial Port 1 */
-          /* Silently handle serial port interrupt - no driver yet */
-          break;
-      
-      default:
-          /* Handle other IRQs */
-          terminal_setcolor(vga_entry_color(VGA_COLOR_BROWN, VGA_COLOR_BLACK));
-          terminal_writestring("IRQ ");
-          char num_str[16];
-          int_to_string(int_no - 32, num_str); // IRQs start at 32
-          terminal_writestring(num_str);
-          terminal_writestring(" handled");
-          terminal_writeline("");
-          terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+          keyboard_handler();
           break;
     }
     
     /* Send End of Interrupt signal to PIC */
+    /* For IRQs 0-7 (interrupts 32-39), send EOI to master PIC only */
+    /* For IRQs 8-15 (interrupts 40-47), send EOI to both slave and master PIC */
     if (int_no >= 40) {
         /* Slave PIC */
         __asm__ volatile("outb %0, %1" : : "a"((uint8_t)0x20), "Nd"((uint16_t)0xA0));
     }
-    /* Master PIC */
+    /* Master PIC - always send for any IRQ */
     __asm__ volatile("outb %0, %1" : : "a"((uint8_t)0x20), "Nd"((uint16_t)0x20));
 }

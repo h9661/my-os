@@ -99,10 +99,34 @@ void terminal_newline(void) {
     terminal_update_cursor();
 }
 
+/* Handle backspace */
+void terminal_backspace(void) {
+    if (terminal.column > 0) {
+        terminal.column--;
+        terminal_putchar_at(' ', terminal.color, terminal.column, terminal.row);
+        terminal_update_cursor();
+    } else if (terminal.row > 0) {
+        terminal.row--;
+        terminal.column = VGA_WIDTH - 1;
+        /* Find the last non-space character in the previous line */
+        while (terminal.column > 0) {
+            const size_t index = terminal.row * VGA_WIDTH + terminal.column - 1;
+            if ((terminal.buffer[index] & 0xFF) != ' ') {
+                break;
+            }
+            terminal.column--;
+        }
+        terminal_update_cursor();
+    }
+}
+
 /* Put a character with the current color at the current position */
 void terminal_putchar(char c) {
     if (c == '\n') {
         terminal_newline();
+        return;
+    } else if (c == '\b') {
+        terminal_backspace();
         return;
     }
     

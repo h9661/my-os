@@ -114,13 +114,13 @@ void pic_initialize(void) {
     __asm_outb(PIC2_DATA, ICW4_8086);
     
     /* Mask unwanted interrupts */
-    /* Master PIC: Enable only timer (IRQ 0) and keyboard (IRQ 1) and cascade (IRQ 2) */
+    /* Master PIC: Enable timer (IRQ 0), keyboard (IRQ 1) and cascade (IRQ 2) */
     /* Mask pattern: 11111000 = 0xF8 (bits 0,1,2 = 0 for enabled IRQs) */
-    // __asm_outb(PIC1_DATA, 0xF8);
+    __asm_outb(PIC1_DATA, 0xF8);
     
     /* Slave PIC: Mask all interrupts for now */
     /* Mask pattern: 11111111 = 0xFF (all IRQs disabled) */
-    // __asm_outb(PIC2_DATA, 0xFF);
+    __asm_outb(PIC2_DATA, 0xFF);
     
     terminal_writeline("PIC initialized successfully!");
 }

@@ -54,6 +54,9 @@ void kernel_initialize(void) {
     /* Initialize interrupts */
     interrupts_initialize();
     
+    /* Initialize keyboard */
+    keyboard_initialize();
+    
     /* Set default color scheme */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
 }
@@ -76,9 +79,14 @@ void kernel_main(void) {
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
     terminal_writeline("Kernel initialized successfully!");
     terminal_writeline("Interrupts enabled. System ready.");
+    terminal_writeline("Keyboard driver loaded. You can now type!");
+    
+    /* Display prompt */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    terminal_writestring("SimpleOS> ");
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
     
     /* Main kernel loop - keep the kernel running */
-    terminal_writeline("Entering kernel main loop...");
     while (1) {
         /* Halt until next interrupt */
         __asm__ volatile("hlt");

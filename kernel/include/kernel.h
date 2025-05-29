@@ -8,6 +8,7 @@
 #include "vga/vga.h"
 #include "cpu/cpu.h"
 #include "interrupts/interrupts.h"  // 추가
+#include "keyboard/keyboard.h"
 
 /* Kernel version information */
 #define KERNEL_VERSION_MAJOR 0

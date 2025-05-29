@@ -51,6 +51,7 @@ void terminal_writeline(const char* data);
 void terminal_newline(void);
 void terminal_scroll(void);
 void terminal_update_cursor(void);
+void terminal_backspace(void);
 
 /* Terminal formatting functions */
 void terminal_print_header(const char* title);

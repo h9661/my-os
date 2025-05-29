@@ -51,6 +51,9 @@ void kernel_initialize(void) {
     /* Initialize terminal first */
     terminal_initialize();
     
+    /* Initialize interrupts */
+    interrupts_initialize();
+    
     /* Set default color scheme */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
 }
@@ -66,13 +69,18 @@ void kernel_main(void) {
     /* Show hardware information */
     kernel_show_hardware_info();
     
+    /* Enable interrupts */
+    enable_interrupts();
+    
     /* Kernel main loop or additional initialization */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
     terminal_writeline("Kernel initialized successfully!");
-    terminal_writeline("System ready.");
+    terminal_writeline("Interrupts enabled. System ready.");
     
-    /* Halt the CPU */
+    /* Main kernel loop - keep the kernel running */
+    terminal_writeline("Entering kernel main loop...");
     while (1) {
+        /* Halt until next interrupt */
         __asm__ volatile("hlt");
     }
 }

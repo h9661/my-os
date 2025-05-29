@@ -7,6 +7,7 @@
 #include "memory/memory.h"
 #include "vga/vga.h"
 #include "cpu/cpu.h"
+#include "interrupts/interrupts.h"  // 추가
 
 /* Kernel version information */
 #define KERNEL_VERSION_MAJOR 0

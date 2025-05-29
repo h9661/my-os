@@ -32,7 +32,13 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/common/utils.c \
                    $(KERNEL_SRC_DIR)/memory/memory.c \
                    $(KERNEL_SRC_DIR)/vga/vga.c \
-                   $(KERNEL_SRC_DIR)/cpu/cpu.c
+                   $(KERNEL_SRC_DIR)/cpu/cpu.c \
+                   $(KERNEL_SRC_DIR)/interrupts/idt.c \
+                   $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c
+
+# Assembly source files
+KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
+                     $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm
 
 # Object files
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
@@ -40,7 +46,11 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/utils.o \
                 $(BUILD_DIR)/memory.o \
                 $(BUILD_DIR)/vga.o \
-                $(BUILD_DIR)/cpu.o
+                $(BUILD_DIR)/cpu.o \
+                $(BUILD_DIR)/idt.o \
+                $(BUILD_DIR)/interrupt_handlers.o
+
+KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o
 
 .PHONY: all clean run debug bootloader kernel hdd structure help
 
@@ -75,7 +85,7 @@ $(KERNEL_BIN): $(KERNEL_ELF) | $(BUILD_DIR)
 	$(OBJCOPY) -O binary $< $@
 
 # Link the kernel ELF
-$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJS) | $(BUILD_DIR)
+$(KERNEL_ELF): $(KERNEL_ENTRY_OBJ) $(KERNEL_C_OBJS) $(KERNEL_ASM_OBJS) | $(BUILD_DIR)
 	$(LD) $(LDFLAGS) $@ $^
 
 # Build kernel entry assembly
@@ -101,6 +111,17 @@ $(BUILD_DIR)/vga.o: $(KERNEL_SRC_DIR)/vga/vga.c | $(BUILD_DIR)
 # Build cpu.c
 $(BUILD_DIR)/cpu.o: $(KERNEL_SRC_DIR)/cpu/cpu.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
+
+# Build interrupt-related C files
+$(BUILD_DIR)/idt.o: $(KERNEL_SRC_DIR)/interrupts/idt.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+$(BUILD_DIR)/interrupt_handlers.o: $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build interrupt assembly handlers
+$(BUILD_DIR)/interrupt_handlers_asm.o: $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm | $(BUILD_DIR)
+	$(NASM) $(NASMFLAGS) -o $@ $<
 
 # Run the OS in QEMU
 run: $(HDD_IMAGE)

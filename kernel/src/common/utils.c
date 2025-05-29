@@ -98,3 +98,39 @@ int memcmp(const void* ptr1, const void* ptr2, size_t num) {
     }
     return 0;
 }
+
+/* Convert integer to hexadecimal string */
+void int_to_hex(int value, char* str) {
+    const char hex_chars[] = "0123456789ABCDEF";
+    int i = 0;
+    
+    /* Handle 0 explicitly */
+    if (value == 0) {
+        str[i++] = '0';
+        str[i] = '\0';
+        return;
+    }
+    
+    /* Convert to unsigned for proper hex handling */
+    unsigned int uvalue = (unsigned int)value;
+    
+    /* Process individual hex digits */
+    while (uvalue != 0) {
+        int remainder = uvalue % 16;
+        str[i++] = hex_chars[remainder];
+        uvalue = uvalue / 16;
+    }
+    
+    str[i] = '\0'; /* Null-terminate string */
+    
+    /* Reverse the string */
+    int start = 0;
+    int end = i - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start] = str[end];
+        str[end] = temp;
+        start++;
+        end--;
+    }
+}

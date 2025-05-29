@@ -95,6 +95,8 @@ void interrupts_initialize(void) {
 
 /* Initialize PIC */
 void pic_initialize(void) {
+    terminal_writeline("Initializing PIC...");
+    
     /* Start initialization sequence in cascade mode */
     __asm_outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
     __asm_outb(PIC2_COMMAND, ICW1_INIT | ICW1_ICW4);
@@ -123,11 +125,49 @@ void pic_initialize(void) {
     __asm_outb(PIC2_DATA, 0xFF);
     
     terminal_writeline("PIC initialized successfully!");
+    terminal_writeline("IRQ 0 (Timer) and IRQ 1 (Keyboard) enabled.");
+}
+
+/* Check and display PIC mask status */
+void pic_display_status(void) {
+    uint8_t master_mask = __asm_inb(PIC1_DATA);
+    uint8_t slave_mask = __asm_inb(PIC2_DATA);
+    
+    char mask_str[16];
+    terminal_writestring("PIC Master mask: 0x");
+    int_to_hex(master_mask, mask_str);
+    terminal_writeline(mask_str);
+    
+    terminal_writestring("PIC Slave mask: 0x");
+    int_to_hex(slave_mask, mask_str);
+    terminal_writeline(mask_str);
+    
+    /* Check specific IRQ status */
+    if (!(master_mask & 0x01)) {
+        terminal_writeline("✅ IRQ 0 (Timer) enabled");
+    } else {
+        terminal_writeline("❌ IRQ 0 (Timer) disabled");
+    }
+    
+    if (!(master_mask & 0x02)) {
+        terminal_writeline("✅ IRQ 1 (Keyboard) enabled");
+    } else {
+        terminal_writeline("❌ IRQ 1 (Keyboard) disabled");
+    }
 }
 
 /* Enable interrupts */
 void enable_interrupts(void) {
     __asm__ volatile("sti");
+    
+    /* Verify interrupts are enabled */
+    uint32_t flags;
+    __asm__ volatile("pushf; pop %0" : "=r"(flags));
+    if (flags & (1 << 9)) {
+        terminal_writeline("✅ Interrupts successfully enabled!");
+    } else {
+        terminal_writeline("❌ Failed to enable interrupts!");
+    }
 }
 
 /* Disable interrupts */

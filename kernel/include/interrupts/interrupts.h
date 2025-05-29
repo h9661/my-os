@@ -53,6 +53,7 @@ void pic_initialize(void);
 void idt_set_gate(uint8_t num, uint32_t handler, uint16_t selector, uint8_t flags);
 void enable_interrupts(void);
 void disable_interrupts(void);
+void pic_display_status(void);
 
 /* Exception handlers */
 void exception_handler_0(void);

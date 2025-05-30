@@ -1,6 +1,5 @@
 #include "include/kernel.h"
 #include "include/syscalls/syscalls.h"
-#include "include/process/process_commands.h"
 
 /* Display kernel banner */
 void kernel_show_banner(void) {

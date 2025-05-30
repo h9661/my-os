@@ -1,4 +1,6 @@
 #include "include/kernel.h"
+#include "include/syscalls/syscalls.h"
+#include "include/process/process_commands.h"
 
 /* Display kernel banner */
 void kernel_show_banner(void) {
@@ -53,6 +55,12 @@ void kernel_initialize(void) {
     
     /* Initialize FPU before interrupts */
     fpu_initialize();
+    
+    /* Initialize process management system */
+    process_init();
+    
+    /* Initialize system calls */
+    syscalls_init();
     
     /* Initialize interrupts */
     interrupts_initialize();

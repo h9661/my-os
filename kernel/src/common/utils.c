@@ -60,12 +60,6 @@ int strcmp(const char* str1, const char* str2) {
     return *(unsigned char*)str1 - *(unsigned char*)str2;
 }
 
-/* Copy string */
-void strcpy(char* dest, const char* src) {
-    while ((*dest++ = *src++))
-        ;
-}
-
 /* Set memory to specific value */
 void* memset(void* ptr, int value, size_t num) {
     unsigned char* p = (unsigned char*)ptr;
@@ -133,4 +127,72 @@ void int_to_hex(int value, char* str) {
         start++;
         end--;
     }
+}
+
+/* String copy function */
+void strcpy(char* dest, const char* src) {
+    size_t i = 0;
+    while (src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+/* String concatenation function */
+void strcat(char* dest, const char* src) {
+    size_t dest_len = strlen(dest);
+    size_t i = 0;
+    while (src[i] != '\0') {
+        dest[dest_len + i] = src[i];
+        i++;
+    }
+    dest[dest_len + i] = '\0';
+}
+
+/* String copy with length limit */
+void strncpy(char* dest, const char* src, size_t n) {
+    size_t i = 0;
+    while (i < n && src[i] != '\0') {
+        dest[i] = src[i];
+        i++;
+    }
+    while (i < n) {
+        dest[i] = '\0';
+        i++;
+    }
+}
+
+/* String comparison with length limit */
+int strncmp(const char* str1, const char* str2, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+        if (str1[i] != str2[i]) {
+            return str1[i] - str2[i];
+        }
+        if (str1[i] == '\0') {
+            break;
+        }
+    }
+    return 0;
+}
+
+/* Convert string to integer */
+int string_to_int(const char* str) {
+    int result = 0;
+    int sign = 1;
+    size_t i = 0;
+    
+    /* Handle negative sign */
+    if (str[0] == '-') {
+        sign = -1;
+        i = 1;
+    }
+    
+    /* Convert digits */
+    while (str[i] >= '0' && str[i] <= '9') {
+        result = result * 10 + (str[i] - '0');
+        i++;
+    }
+    
+    return result * sign;
 }

@@ -33,6 +33,7 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/memory/memory.c \
                    $(KERNEL_SRC_DIR)/vga/vga.c \
                    $(KERNEL_SRC_DIR)/cpu/cpu.c \
+                   $(KERNEL_SRC_DIR)/cpu/fpu.c \
                    $(KERNEL_SRC_DIR)/interrupts/idt.c \
                    $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c \
                    $(KERNEL_SRC_DIR)/keyboard/keyboard.c
@@ -48,6 +49,7 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/memory.o \
                 $(BUILD_DIR)/vga.o \
                 $(BUILD_DIR)/cpu.o \
+                $(BUILD_DIR)/fpu.o \
                 $(BUILD_DIR)/idt.o \
                 $(BUILD_DIR)/interrupt_handlers.o \
                 $(BUILD_DIR)/keyboard.o
@@ -112,6 +114,10 @@ $(BUILD_DIR)/vga.o: $(KERNEL_SRC_DIR)/vga/vga.c | $(BUILD_DIR)
 
 # Build cpu.c
 $(BUILD_DIR)/cpu.o: $(KERNEL_SRC_DIR)/cpu/cpu.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build fpu.c
+$(BUILD_DIR)/fpu.o: $(KERNEL_SRC_DIR)/cpu/fpu.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
 # Build interrupt-related C files

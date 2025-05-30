@@ -7,6 +7,7 @@
 #include "memory/memory.h"
 #include "vga/vga.h"
 #include "cpu/cpu.h"
+#include "cpu/fpu.h"
 #include "interrupts/interrupts.h"  // 추가
 #include "keyboard/keyboard.h"
 

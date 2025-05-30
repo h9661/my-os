@@ -51,6 +51,9 @@ void kernel_initialize(void) {
     /* Initialize terminal first */
     terminal_initialize();
     
+    /* Initialize FPU before interrupts */
+    fpu_initialize();
+    
     /* Initialize interrupts */
     interrupts_initialize();
     

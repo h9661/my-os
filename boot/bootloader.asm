@@ -1,219 +1,103 @@
-; ============================================================================
-; 부트로더 (Bootloader) - 16비트 실제 모드 진입점
-; ============================================================================
-; 역할: 1) 하드웨어 초기화 2) 커널 로드 3) 32비트 보호 모드 전환 4) 커널 실행
-; BIOS → 부트로더 → 커널 순서로 제어권이 이동함
+[BITS 16]
+[ORG 0x7C00]
 
-[BITS 16]              ; 어셈블러에게 16비트 x86 명령어로 컴파일하라고 지시
-                       ; 부팅 시 CPU는 8086 호환성을 위해 16비트 실제 모드로 시작함
-[ORG 0x7C00]           ; 코드의 시작 주소를 0x7C00으로 설정 (Origin)
-                       ; BIOS 표준: 부트섹터(512바이트)를 항상 0x7C00에 로드함
-                       ; 이 주소는 IBM PC 시절부터 사용된 표준 위치
+mov ax, 0
+mov ds, ax
+mov es, ax
 
-; === 1단계: 세그먼트 레지스터 초기화 ===
-; 세그먼트 레지스터란?: 메모리 주소를 세그먼트와 오프셋으로 나누어 접근하는 방식
-; 실제 모드에서는 세그먼트 레지스터가 메모리 주소 계산의 기초가 됨
-; 문제점: BIOS가 부트로더에 제어권을 넘길 때 세그먼트 레지스터들이 예측 불가능한 값
-; 해결책: 모든 세그먼트를 0으로 통일하여 플랫 메모리 모델 구성
-mov ax, 0              ; AX = 0x0000 (중간 레지스터로 사용, 세그먼트에 직접 대입 불가)
-mov ds, ax             ; DS (Data Segment) = 0x0000 
-                       ; 데이터 접근 시 기준 주소: mov al, [0x1234] → 실제 주소 0x0000:0x1234
-mov es, ax             ; ES (Extra Segment) = 0x0000
-                       ; 문자열 연산(STOS, MOVS 등)과 일부 BIOS 호출에서 사용
+mov bp, 0x9000
+mov sp, bp
 
-; === 2단계: 스택 초기화 ===
-; 스택은 함수 호출, 지역 변수, 레지스터 백업에 필수적
-; 스택의 특성: 높은 주소에서 낮은 주소로 자라남 (PUSH시 SP 감소)
-mov bp, 0x9000         ; BP (Base Pointer) = 0x9000 (36KB 위치)
-                       ; 스택의 "바닥"을 표시하는 기준점으로 사용
-                       ; 이 위치는 BIOS가 사용하지 않는 안전한 메모리 영역
-mov sp, bp             ; SP (Stack Pointer) = BP로 설정 (빈 스택 상태)
-                       ; SP는 다음에 PUSH될 데이터가 저장될 위치를 가리킴
-                       ; 초기에는 BP와 같아서 스택이 비어있음을 의미
+mov [boot_drive], dl
 
-; === 3단계: 부트 드라이브 정보 저장 ===
-; BIOS는 어떤 드라이브에서 부팅했는지 정보를 DL 레지스터에 전달
-; 플로피: 0x00, 첫번째 하드디스크: 0x80, 두번째 하드디스크: 0x81
-mov [boot_drive], dl   ; DL 값을 boot_drive 메모리 위치에 저장
-                       ; 나중에 커널을 디스크에서 읽을 때 이 정보가 필요함
-                       ; 메모리에 저장하는 이유: DL 레지스터가 다른 용도로 사용될 수 있기 때문
+mov si, MSG_REAL_MODE
+call print_string
+mov bx, 0x1000
+mov dh, 50
+mov dl, [boot_drive]
 
-; === 4단계: 부트로더 실행 확인 메시지 출력 ===
-; 부트로더가 정상적으로 시작되었음을 사용자에게 알림
-mov si, MSG_REAL_MODE  ; SI (소스 인덱스)에 메시지 주소 로드
-                       ; LODSB 명령과 함께 사용되어 문자열을 순차적으로 읽음
-call print_string      ; 문자열 출력 함수 호출 (BIOS 서비스 사용)
-                       ; disk.asm에 정의된 함수로 BIOS INT 0x10 사용
+call disk_load
 
-; === 5단계: 커널을 디스크에서 메모리로 로드 ===
-; 부트섹터(512바이트) 다음에 저장된 커널을 메모리로 읽어옴
-mov bx, 0x1000         ; BX = 커널을 로드할 목표 메모리 주소 (4KB 위치)
-                       ; 이 주소는 부트로더와 충돌하지 않는 안전한 영역
-mov dh, 60             ; DH = 읽을 섹터 수 (60 섹터 = 30KB, 커널 크기에 맞게 조정)
-                       ; 1 섹터 = 512바이트이므로 60 × 512 = 30,720바이트
-mov dl, [boot_drive]   ; DL = 저장된 부트 드라이브 번호 복원
-                       ; 앞서 저장한 값을 다시 DL 레지스터로 로드
+mov si, MSG_LOAD_KERNEL
+call print_string
 
-call disk_load         ; 디스크 읽기 루틴 호출 (disk.asm에 정의됨)
-                       ; BIOS INT 0x13을 사용하여 실제 디스크 읽기 수행
+cli
+xor ax, ax
+mov ds, ax
+mov es, ax
 
-; === 6단계: 커널 로딩 완료 메시지 출력 ===
-mov si, MSG_LOAD_KERNEL ; 커널 로딩 완료 메시지 주소를 SI에 로드
-call print_string       ; 성공적인 커널 로딩을 사용자에게 알림
+lgdt [gdt_descriptor]
 
-; === 7단계: 32비트 보호 모드 전환 준비 ===
-; 중요: 16비트 실제 모드에서 32비트 보호 모드로 전환하는 과정
-; 실제 모드: 세그먼트:오프셋 주소 지정, 1MB 메모리 제한, BIOS 서비스 사용 가능
-; 보호 모드: 32비트 선형 주소 지정, 4GB 메모리 접근, 메모리 보호 기능, BIOS 서비스 불가
-cli                     ; Clear Interrupt Flag - 인터럽트 비활성화
-                        ; 모드 전환 중 인터럽트가 발생하면 시스템이 불안정해질 수 있음
-                        ; 보호 모드로 전환된 후에는 새로운 인터럽트 핸들러가 필요함
-xor ax, ax              ; AX 레지스터를 0으로 초기화 (XOR 연산이 MOV보다 1바이트 작음)
-mov ds, ax              ; DS = 0 (데이터 세그먼트를 다시 초기화)
-mov es, ax              ; ES = 0 (확장 세그먼트를 다시 초기화)
+mov eax, cr0
+or al, 1
+mov cr0, eax
 
-; === 8단계: GDT(Global Descriptor Table) 로드 ===
-; GDT: 보호 모드에서 메모리 세그먼트를 정의하는 테이블
-; 각 엔트리는 세그먼트의 기준 주소, 크기, 접근 권한 등을 정의
-lgdt [gdt_descriptor]   ; LGDT 명령으로 GDT 디스크립터를 프로세서에 로드
-                        ; gdt_descriptor는 GDT의 위치와 크기 정보를 포함 (gdt.asm에 정의)
+jmp CODE_SEG:init_pm
 
-; === 9단계: 보호 모드로 실제 전환 ===
-; CR0 레지스터의 PE(Protection Enable) 비트를 설정하여 보호 모드 활성화
-mov eax, cr0            ; CR0 제어 레지스터의 현재 값을 EAX로 복사
-                        ; CR0은 32비트 레지스터이므로 32비트 레지스터(EAX) 사용 필요
-or al, 1                ; AL(EAX의 하위 8비트)의 최하위 비트(PE bit)를 1로 설정
-                        ; PE bit = 1이면 보호 모드, 0이면 실제 모드
-mov cr0, eax            ; 변경된 값을 CR0에 다시 저장 → 보호 모드 즉시 활성화
+%include "boot/gdt.asm"
+%include "boot/disk.asm"
 
-; === 10단계: 32비트 코드로 점프 ===
-; Far Jump를 통해 파이프라인을 플러시하고 CS 레지스터를 32비트 코드 세그먼트로 업데이트
-jmp CODE_SEG:init_pm    ; Far Jump: CODE_SEG 세그먼트의 init_pm 주소로 이동
-                        ; CODE_SEG는 GDT의 코드 세그먼트 셀렉터 (gdt.asm에서 정의)
-                        ; 이 점프 후부터는 완전히 32비트 보호 모드로 동작
-
-; === 다른 어셈블리 파일들 포함 ===
-; %include는 NASM 전처리기 지시문으로, 다른 파일의 내용을 여기에 삽입
-%include "boot/gdt.asm"   ; GDT 정의와 세그먼트 셀렉터 상수들
-%include "boot/disk.asm"  ; 디스크 읽기 루틴과 에러 처리 함수들
-
-[BITS 32]               ; 여기서부터 32비트 명령어로 컴파일
-; === 32비트 보호 모드 코드 시작 ===
+[BITS 32]
 init_pm:
-    ; === 세그먼트 레지스터 업데이트 ===
-    ; 보호 모드에서는 세그먼트 레지스터에 GDT 인덱스(셀렉터)를 저장
-    mov ax, DATA_SEG     ; AX에 데이터 세그먼트 셀렉터 로드 (gdt.asm에서 정의)
-    mov ds, ax           ; DS = 데이터 세그먼트 (일반 데이터 접근용)
-    mov ss, ax           ; SS = 스택 세그먼트 (스택 접근용)
-    mov es, ax           ; ES = 확장 세그먼트 (문자열 연산용)
-    mov fs, ax           ; FS = 추가 세그먼트 (운영체제가 특별한 용도로 사용)
-    mov gs, ax           ; GS = 추가 세그먼트 (운영체제가 특별한 용도로 사용)
+    mov ax, DATA_SEG
+    mov ds, ax
+    mov ss, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
     
-    ; === 32비트 모드용 새로운 스택 설정 ===
-    ; 더 큰 메모리 공간을 활용할 수 있는 스택 위치로 이동
-    mov ebp, 0x90000     ; EBP = 새로운 스택 베이스 (576KB 위치)
-    mov esp, ebp         ; ESP = 스택 포인터를 베이스와 같게 설정
+    mov ebp, 0x90000
+    mov esp, ebp
     
-    ; === 32비트 메인 함수 호출 ===
-    call BEGIN_PM        ; 보호 모드 메인 루틴 실행
+    call BEGIN_PM
 
-; === 32비트 보호 모드 메인 루틴 ===
-; 커널로 점프하기 전 최종 준비 작업들
 BEGIN_PM:
-    mov ebx, MSG_PROT_MODE   ; EBX에 보호 모드 성공 메시지 주소 로드
-    call print_string_pm     ; 보호 모드 전환 성공 메시지 출력
+    mov ebx, MSG_PROT_MODE
+    call print_string_pm
     
-    ; === 화면 지우기 ===
-    ; 커널 출력을 보기 위해 화면을 깨끗하게 만듦
     call clear_screen_pm
     
-    ; === 커널 점프 직전 메시지 출력 ===
-    mov ebx, MSG_JUMPING_KERNEL ; 커널 점프 메시지 주소
-    call print_string_pm        ; 메시지 출력
+    mov ebx, MSG_JUMPING_KERNEL
+    call print_string_pm
     
-    ; === 디버그용 시각적 표시 ===
-    ; 화면 왼쪽 상단에 "BRBR" 표시 (흰색 글자, 빨간 배경)
-    mov dword [0xb8000], 0x4F524F42  ; VGA 메모리에 직접 쓰기
+    mov dword [0xb8000], 0x4F524F42
     
-    ; === 커널로 점프 ===
-    ; 부트로더의 임무 완료, 커널에게 제어권 이양
-    jmp 0x1000            ; 커널 진입점 0x1000으로 무조건 점프
+    jmp 0x1000
 
-; === 32비트 모드에서 화면 지우기 함수 ===
-; VGA 텍스트 모드 비디오 메모리를 직접 조작하여 화면 클리어
-; 32비트 모드에서는 BIOS 서비스를 사용할 수 없으므로 직접 메모리 접근 필요
 clear_screen_pm:
-    pusha                    ; 모든 범용 레지스터 백업 (함수 시작)
-    mov edx, 0xb8000         ; EDX = VGA 텍스트 모드 비디오 메모리 시작 주소
-                             ; VGA 텍스트 모드: 80x25 문자, 각 문자는 2바이트(문자+속성)
-    mov ecx, 2000            ; ECX = 화면 문자 수 (80열 × 25행 = 2000개)
-    mov ax, 0x0700           ; AX = 속성+문자 쌍
-                             ; AH = 0x07 (속성: 검은 배경/밝은 회색 글자)
-                             ; AL = 0x00 (문자: NULL, 공백으로 표시됨)
+    pusha
+    mov edx, 0xb8000
+    mov ecx, 2000
+    mov ax, 0x0700
 .clear_loop:
-    mov [edx], ax            ; 현재 위치에 공백 문자와 속성 저장
-    add edx, 2               ; 다음 문자 위치로 이동 (2바이트씩: 문자+속성)
-    dec ecx                  ; 카운터 감소 (남은 문자 수)
-    jnz .clear_loop          ; 0이 아니면 루프 계속 (모든 화면을 지울 때까지)
-    popa                     ; 모든 범용 레지스터 복원 (함수 종료)
-    ret                      ; 호출자로 복귀
+    mov [edx], ax
+    add edx, 2
+    dec ecx
+    jnz .clear_loop
+    popa
+    ret
 
-; === 32비트 모드에서 문자열 출력 함수 ===
-; BIOS 서비스를 사용할 수 없으므로 VGA 메모리에 직접 접근하여 문자열 출력
-; 입력: EBX = 출력할 null-terminated 문자열의 주소
 print_string_pm:
-    pusha                    ; 모든 범용 레지스터 백업
-    mov edx, 0xb8000         ; EDX = VGA 비디오 메모리 시작 주소
-                             ; 화면 좌상단 (0,0) 위치부터 출력 시작
+    pusha
+    mov edx, 0xb8000
 .loop:
-    mov al, [ebx]            ; AL = EBX가 가리키는 문자 로드
-    mov ah, 0x0F             ; AH = 문자 속성
-                             ; 0x0F = 검은 배경(0) + 밝은 흰색 글자(F)
-    cmp al, 0                ; 문자가 null terminator(0)인지 확인
-    je .done                 ; null이면 문자열 끝이므로 종료
-    mov [edx], ax            ; 문자+속성을 비디오 메모리에 저장
-    add ebx, 1               ; 다음 문자로 포인터 이동
-    add edx, 2               ; 다음 비디오 메모리 위치로 이동 (2바이트씩)
-    jmp .loop                ; 다음 문자 처리를 위해 루프 계속
+    mov al, [ebx]
+    mov ah, 0x0F
+    cmp al, 0
+    je .done
+    mov [edx], ax
+    add ebx, 1
+    add edx, 2
+    jmp .loop
 .done:
-    popa                     ; 모든 범용 레지스터 복원
-    ret                      ; 호출자로 복귀
+    popa
+    ret
 
-; === 시스템 메시지 정의 ===
-; 부트로더가 사용하는 사용자 안내 메시지들 (null-terminated strings)
-; 각 메시지는 C 스타일 문자열로 null(0) 바이트로 종료됨
-MSG_REAL_MODE db "Started in 16-bit Real Mode", 0x0D, 0x0A, 0       
-                        ; 16비트 실제 모드 시작 알림 메시지
-                        ; 0x0D = CR (Carriage Return, 커서를 줄 맨 앞으로)
-                        ; 0x0A = LF (Line Feed, 커서를 다음 줄로)
-                        ; 0 = NULL terminator (문자열 끝 표시)
-MSG_LOAD_KERNEL db "Loading kernel into memory", 0x0D, 0x0A, 0       
-                        ; 커널 로딩 진행 중 알림 메시지
-                        ; 사용자가 부트로더가 정상 작동하는지 확인할 수 있음
-MSG_PROT_MODE db "Successfully switched to 32-bit Protected Mode", 0 
-                        ; 32비트 보호 모드 전환 성공 메시지
-                        ; 32비트 모드에서는 BIOS 서비스를 사용할 수 없으므로
-                        ; VGA 메모리에 직접 쓰기로 출력됨
-MSG_JUMPING_KERNEL db "Jumping to kernel at 0x1000...", 0           
-                        ; 커널로 점프하기 직전 최종 알림 메시지
-                        ; 이후 제어권이 커널로 완전히 이양됨
+MSG_REAL_MODE db "Started in 16-bit Real Mode", 0x0D, 0x0A, 0
+MSG_LOAD_KERNEL db "Loading kernel into memory", 0x0D, 0x0A, 0
+MSG_PROT_MODE db "Successfully switched to 32-bit Protected Mode", 0
+MSG_JUMPING_KERNEL db "Jumping to kernel at 0x1000...", 0
 
-; === 부트 섹터 패딩 및 시그니처 ===
-; BIOS는 부트 섹터가 정확히 512바이트이고 특정 시그니처를 가져야 함을 요구
-; 이는 IBM PC 호환성을 위한 표준 규격임
-times 510-($-$$) db 0     ; 현재 위치($)에서 시작 위치($$)를 뺀 크기만큼을
-                          ; 510바이트에서 빼서 남은 공간을 0으로 패딩
-                          ; $ = 현재 라인의 주소, $$ = 섹션 시작 주소 ([ORG 0x7C00])
-                          ; 즉, (510 - 현재까지 사용한 바이트 수)만큼 0으로 채움
-dw 0xAA55                 ; 부트 시그니처 (Boot Signature)
-                          ; BIOS가 유효한 부트 섹터인지 확인하는 매직 넘버
-                          ; 반드시 부트 섹터의 마지막 2바이트(510, 511번째)에 위치
-                          ; 리틀 엔디안으로 저장되어 메모리에서는 [0x55][0xAA] 순서
-
-; === 부트 드라이브 변수 ===
-; 부트 섹터 외부에 위치하는 데이터 영역 (512바이트 제한에 포함되지 않음)
-boot_drive db 0           ; BIOS가 전달한 부트 드라이브 번호 저장 공간
-                          ; 1바이트 크기의 변수로 초기값은 0
-                          ; 실행 시 BIOS가 DL 레지스터로 전달한 값이 저장됨
-                          ; 0x00~0x7F: 플로피 드라이브
-                          ; 0x80~0xFF: 하드 드라이브 (0x80=첫번째, 0x81=두번째...)
+times 510-($-$$) db 0
+dw 0xAA55
+boot_drive db 0

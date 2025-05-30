@@ -17,14 +17,6 @@ static inline void send_eoi(uint32_t int_no) {
 
 /* Timer interrupt handler */
 void c_irq_handler_timer(void) {
-    /* Uncomment this to see timer interrupts (can cause a lot of output) */
-    /*
-    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
-    terminal_writestring("Timer Interrupt (IRQ 0)");
-    terminal_writeline("");
-    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
-    */
-    
     /* Send EOI to PIC */
     send_eoi(32);
 }

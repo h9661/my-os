@@ -150,20 +150,12 @@ void keyboard_process_input(uint8_t scancode) {
             keyboard_state.caps_lock = !keyboard_state.caps_lock;
             break;
             
-        case KEY_BACKSPACE:
-            /* Handle backspace */
-            terminal_putchar('\b');
-            break;
-            
         default: {
             /* Convert scancode to ASCII and display */
             char ascii = scancode_to_ascii(scancode, keyboard_state.shift_pressed);
             if (ascii != 0) {
                 /* Add to input buffer */
                 input_buffer_add_char(ascii);
-                
-                /* Display the character */
-                terminal_putchar(ascii);
             }
             break;
         }

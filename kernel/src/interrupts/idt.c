@@ -39,28 +39,6 @@ void interrupts_initialize(void) {
     /* Clear IDT */
     memset(&idt, 0, sizeof(idt));
     
-    /* Set exception handlers */
-    idt_set_gate(0, (uint32_t)exception_handler_0, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(1, (uint32_t)exception_handler_1, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(2, (uint32_t)exception_handler_2, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(3, (uint32_t)exception_handler_3, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(4, (uint32_t)exception_handler_4, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(5, (uint32_t)exception_handler_5, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(6, (uint32_t)exception_handler_6, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(7, (uint32_t)exception_handler_7, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(8, (uint32_t)exception_handler_8, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(9, (uint32_t)exception_handler_9, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(10, (uint32_t)exception_handler_10, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(11, (uint32_t)exception_handler_11, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(12, (uint32_t)exception_handler_12, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(13, (uint32_t)exception_handler_13, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(14, (uint32_t)exception_handler_14, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(15, (uint32_t)exception_handler_15, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(16, (uint32_t)exception_handler_16, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(17, (uint32_t)exception_handler_17, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(18, (uint32_t)exception_handler_18, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    idt_set_gate(19, (uint32_t)exception_handler_19, 0x08, IDT_TYPE_INTERRUPT_GATE);
-    
     /* Set hardware interrupt handlers */
     idt_set_gate(32, (uint32_t)irq_handler_timer, 0x08, IDT_TYPE_INTERRUPT_GATE);
     idt_set_gate(33, (uint32_t)irq_handler_keyboard, 0x08, IDT_TYPE_INTERRUPT_GATE);

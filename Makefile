@@ -36,11 +36,15 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/cpu/fpu.c \
                    $(KERNEL_SRC_DIR)/interrupts/idt.c \
                    $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c \
-                   $(KERNEL_SRC_DIR)/keyboard/keyboard.c
+                   $(KERNEL_SRC_DIR)/keyboard/keyboard.c \
+                   $(KERNEL_SRC_DIR)/process/process.c \
+                   $(KERNEL_SRC_DIR)/process/process_commands.c \
+                   $(KERNEL_SRC_DIR)/syscalls/syscalls.c
 
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
-                     $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm
+                     $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm \
+                     $(KERNEL_SRC_DIR)/process/context_switch.asm
 
 # Object files
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
@@ -52,9 +56,13 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/fpu.o \
                 $(BUILD_DIR)/idt.o \
                 $(BUILD_DIR)/interrupt_handlers.o \
-                $(BUILD_DIR)/keyboard.o
+                $(BUILD_DIR)/keyboard.o \
+                $(BUILD_DIR)/process.o \
+                $(BUILD_DIR)/process_commands.o \
+                $(BUILD_DIR)/syscalls.o
 
-KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o
+KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
+                  $(BUILD_DIR)/context_switch.o
 
 .PHONY: all clean run debug bootloader kernel hdd structure help
 
@@ -133,6 +141,22 @@ $(BUILD_DIR)/keyboard.o: $(KERNEL_SRC_DIR)/keyboard/keyboard.c | $(BUILD_DIR)
 
 # Build interrupt assembly handlers
 $(BUILD_DIR)/interrupt_handlers_asm.o: $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm | $(BUILD_DIR)
+	$(NASM) $(NASMFLAGS) -o $@ $<
+
+# Build process.c
+$(BUILD_DIR)/process.o: $(KERNEL_SRC_DIR)/process/process.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build process_commands.c
+$(BUILD_DIR)/process_commands.o: $(KERNEL_SRC_DIR)/process/process_commands.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build syscalls.c
+$(BUILD_DIR)/syscalls.o: $(KERNEL_SRC_DIR)/syscalls/syscalls.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build context_switch.asm
+$(BUILD_DIR)/context_switch.o: $(KERNEL_SRC_DIR)/process/context_switch.asm | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
 # Run the OS in QEMU

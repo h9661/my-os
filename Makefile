@@ -38,7 +38,6 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c \
                    $(KERNEL_SRC_DIR)/keyboard/keyboard.c \
                    $(KERNEL_SRC_DIR)/process/process.c \
-                   $(KERNEL_SRC_DIR)/process/process_commands.c \
                    $(KERNEL_SRC_DIR)/syscalls/syscalls.c
 
 # Assembly source files
@@ -58,7 +57,6 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/interrupt_handlers.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/process.o \
-                $(BUILD_DIR)/process_commands.o \
                 $(BUILD_DIR)/syscalls.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \

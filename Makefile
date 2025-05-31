@@ -27,11 +27,12 @@ BOOT_SRC = $(BOOT_DIR)/bootloader.asm
 KERNEL_ENTRY = $(KERNEL_DIR)/kernel_entry.asm
 KERNEL_MAIN = $(KERNEL_DIR)/kernel_main.c
 
-# Find all C source files in subdirectories
+# Kernel C source files
 KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/common/utils.c \
                    $(KERNEL_SRC_DIR)/memory/memory.c \
                    $(KERNEL_SRC_DIR)/vga/vga.c \
+                   $(KERNEL_SRC_DIR)/terminal/terminal.c \
                    $(KERNEL_SRC_DIR)/cpu/cpu.c \
                    $(KERNEL_SRC_DIR)/cpu/fpu.c \
                    $(KERNEL_SRC_DIR)/interrupts/idt.c \
@@ -51,6 +52,7 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/utils.o \
                 $(BUILD_DIR)/memory.o \
                 $(BUILD_DIR)/vga.o \
+                $(BUILD_DIR)/terminal.o \
                 $(BUILD_DIR)/cpu.o \
                 $(BUILD_DIR)/fpu.o \
                 $(BUILD_DIR)/idt.o \
@@ -145,8 +147,8 @@ $(BUILD_DIR)/interrupt_handlers_asm.o: $(KERNEL_SRC_DIR)/interrupts/interrupt_ha
 $(BUILD_DIR)/process.o: $(KERNEL_SRC_DIR)/process/process.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
-# Build process_commands.c
-$(BUILD_DIR)/process_commands.o: $(KERNEL_SRC_DIR)/process/process_commands.c | $(BUILD_DIR)
+# Build terminal.c
+$(BUILD_DIR)/terminal.o: $(KERNEL_SRC_DIR)/terminal/terminal.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
 # Build syscalls.c

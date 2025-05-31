@@ -6,6 +6,7 @@
 #include "common/utils.h"
 #include "memory/memory.h"
 #include "vga/vga.h"
+#include "terminal/terminal.h"
 #include "cpu/cpu.h"
 #include "cpu/fpu.h"
 #include "interrupts/interrupts.h"  // 추가

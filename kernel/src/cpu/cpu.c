@@ -1,5 +1,6 @@
 #include "../../include/cpu/cpu.h"
 #include "../../include/vga/vga.h"
+#include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
 
 /* Execute CPUID instruction */

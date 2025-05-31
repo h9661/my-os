@@ -1,5 +1,6 @@
 #include "../../include/interrupts/interrupts.h"
 #include "../../include/vga/vga.h"
+#include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
 
 /* Helper functions for port I/O */

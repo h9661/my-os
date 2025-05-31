@@ -1,6 +1,7 @@
 #include "../../include/syscalls/syscalls.h"
 #include "../../include/process/process.h"
 #include "../../include/vga/vga.h"
+#include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
 #include "../../include/interrupts/interrupts.h"
 

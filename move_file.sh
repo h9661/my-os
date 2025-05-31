@@ -92,7 +92,7 @@ if [[ "$SOURCE_EXT" == "c" || "$SOURCE_EXT" == "cpp" || "$SOURCE_EXT" == "h" || 
                     TARGET_REL_FROM_FILE=$(realpath --relative-to="$FILE_DIR" "$TARGET_PATH")
                     echo "  업데이트: $FILE"
                     # 원본 파일명을 포함하는 include 문을 찾아 새 경로로 업데이트
-                    sed -i '' "s|#include \".*$SOURCE_FILENAME\"|#include \"$TARGET_REL_FROM_FILE\"|g" "$FILE"
+                    sed -i "s|#include \".*$SOURCE_FILENAME\"|#include \"$TARGET_REL_FROM_FILE\"|g" "$FILE"
                 fi
             fi
         done

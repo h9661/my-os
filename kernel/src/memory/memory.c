@@ -1,5 +1,6 @@
 #include "../../include/memory/memory.h"
 #include "../../include/vga/vga.h"
+#include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
 
 /* Read from CMOS to detect memory size */

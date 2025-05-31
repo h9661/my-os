@@ -1,5 +1,6 @@
 #include "../../include/keyboard/keyboard.h"
 #include "../../include/vga/vga.h"
+#include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
 
 /* US QWERTY scancode to ASCII conversion table */

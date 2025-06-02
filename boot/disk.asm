@@ -23,6 +23,28 @@ disk_load:
     
     ret                   ; Success
 
+; Load sectors chunk from disk to memory (with starting sector parameter)
+; Parameters: BX = target memory address, DH = sectors to read, DL = drive number, CL = starting sector
+disk_load_chunk:
+    push dx               ; Save original parameters for error checking
+    
+    mov ah, 0x02          ; BIOS read function
+    mov al, dh            ; Number of sectors to read
+    mov ch, 0             ; Cylinder (track) number = 0
+    mov dh, 0             ; Head number = 0
+    ; CL already set by caller (starting sector)
+    ; ES:BX already set by caller (target address)
+    
+    int 0x13              ; BIOS disk service interrupt
+    
+    jc disk_error         ; Jump if carry flag set (error occurred)
+    
+    pop dx                ; Restore original DX
+    cmp dh, al            ; Compare requested vs actual sectors read
+    jne disk_error        ; Jump if not equal (error)
+    
+    ret                   ; Success
+
 ; Handle disk read errors
 disk_error:
     mov si, DISK_ERROR_MSG

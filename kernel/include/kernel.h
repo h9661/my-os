@@ -11,6 +11,7 @@
 #include "cpu/fpu.h"
 #include "interrupts/interrupts.h"  // 추가
 #include "keyboard/keyboard.h"
+#include "storage/hdd.h"
 
 /* Kernel version information */
 #define KERNEL_VERSION_MAJOR 0

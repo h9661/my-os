@@ -39,7 +39,8 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.c \
                    $(KERNEL_SRC_DIR)/keyboard/keyboard.c \
                    $(KERNEL_SRC_DIR)/process/process.c \
-                   $(KERNEL_SRC_DIR)/syscalls/syscalls.c
+                   $(KERNEL_SRC_DIR)/syscalls/syscalls.c \
+                   $(KERNEL_SRC_DIR)/storage/hdd.c
 
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
@@ -59,7 +60,8 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/interrupt_handlers.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/process.o \
-                $(BUILD_DIR)/syscalls.o
+                $(BUILD_DIR)/syscalls.o \
+                $(BUILD_DIR)/hdd.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
                   $(BUILD_DIR)/context_switch.o
@@ -155,17 +157,21 @@ $(BUILD_DIR)/terminal.o: $(KERNEL_SRC_DIR)/terminal/terminal.c | $(BUILD_DIR)
 $(BUILD_DIR)/syscalls.o: $(KERNEL_SRC_DIR)/syscalls/syscalls.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
+# Build hdd.c
+$(BUILD_DIR)/hdd.o: $(KERNEL_SRC_DIR)/storage/hdd.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
 # Build context_switch.asm
 $(BUILD_DIR)/context_switch.o: $(KERNEL_SRC_DIR)/process/context_switch.asm | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
 # Run the OS in QEMU
 run: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 32
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 64
 
 # Run the OS in QEMU with debugging
 debug: $(HDD_IMAGE)
-	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 32 -s -S
+	qemu-system-i386 -drive format=raw,file=$(HDD_IMAGE) -m 64 -s -S
 
 # Clean build artifacts
 clean:

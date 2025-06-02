@@ -67,6 +67,9 @@ void kernel_initialize(void) {
     /* Initialize keyboard */
     keyboard_initialize();
     
+    /* Initialize HDD subsystem */
+    hdd_initialize();
+    
     /* Set default color scheme */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
 }

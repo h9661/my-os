@@ -402,12 +402,18 @@ void cpu_print_info(const cpu_info_t* info) {
         terminal_writestring(num_str);
         terminal_writeline(" KB");
     }
+    else {
+        terminal_writeline("L1 Data Cache: Not Available");
+    }
     
     if (info->cache.l1_instruction_cache_size > 0) {
         terminal_writestring("L1 Instruction Cache: ");
         int_to_string(info->cache.l1_instruction_cache_size, num_str);
         terminal_writestring(num_str);
         terminal_writeline(" KB");
+    }
+    else {
+        terminal_writeline("L1 Instruction Cache: Not Available");
     }
     
     if (info->cache.l2_cache_size > 0) {
@@ -416,6 +422,9 @@ void cpu_print_info(const cpu_info_t* info) {
         terminal_writestring(num_str);
         terminal_writeline(" KB");
     }
+    else {
+        terminal_writeline("L2 Cache: Not Available");
+    }
     
     if (info->cache.l3_cache_size > 0) {
         terminal_writestring("L3 Cache: ");
@@ -423,12 +432,18 @@ void cpu_print_info(const cpu_info_t* info) {
         terminal_writestring(num_str);
         terminal_writeline(" KB");
     }
+    else {
+        terminal_writeline("L3 Cache: Not Available");
+    }
     
     if (info->cache.cache_line_size > 0) {
         terminal_writestring("Cache Line Size: ");
         int_to_string(info->cache.cache_line_size, num_str);
         terminal_writestring(num_str);
         terminal_writeline(" bytes");
+    }
+    else {
+        terminal_writeline("Cache Line Size: Not Available");
     }
     
     /* Print frequency information */

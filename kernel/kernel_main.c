@@ -83,7 +83,8 @@ void kernel_initialize(void) {
     terminal_writestring("HDD initialized...\n");
     
     /* Initialize FAT32 file system on primary master */
-    // fat32_initialize(HDD_PRIMARY_MASTER);
+    fat32_initialize(HDD_PRIMARY_MASTER);
+    terminal_writestring("FAT32 file system initialized on primary master HDD...\n");
     
     /* Set default color scheme */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
@@ -102,7 +103,7 @@ void kernel_main(void) {
     kernel_show_hardware_info();
     
     /* Enable interrupts */
-    //enable_interrupts();
+    enable_interrupts();
     
     /* Kernel main loop or additional initialization */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));

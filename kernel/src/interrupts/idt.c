@@ -143,9 +143,9 @@ void enable_interrupts(void) {
     uint32_t flags;
     __asm__ volatile("pushf; pop %0" : "=r"(flags));
     if (flags & (1 << 9)) {
-        terminal_writeline("✅ Interrupts successfully enabled!");
+        terminal_writeline("Interrupts successfully enabled!");
     } else {
-        terminal_writeline("❌ Failed to enable interrupts!");
+        terminal_writeline("Failed to enable interrupts!");
     }
 }
 

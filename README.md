@@ -4,69 +4,108 @@
 ![Architecture](https://img.shields.io/badge/arch-i686-green.svg)
 ![Language](https://img.shields.io/badge/language-C%2FASM-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
-**Simple OS**는 32비트 x86 아키텍처를 위한 교육용 운영체제입니다. 부트로더부터 커널까지 완전히 처음부터 개발된 단순하지만 완전한 운영체제입니다.
+**Simple OS**는 32비트 x86 아키텍처를 위한 교육용 운영체제입니다. 부트로더부터 커널까지 완전히 처음부터 개발된 단순하지만 완전한 운영체제로, 현대적인 운영체제의 핵심 기능들을 학습할 수 있도록 설계되었습니다.
 
 ## 🚀 주요 특징
 
 ### 🔧 시스템 아키텍처
 - **32비트 x86 (i686) 아키텍처 지원**
 - **보호 모드 (Protected Mode) 동작**
-- **커스텀 부트로더** - 16비트 실모드에서 32비트 보호모드로 전환
+- **2단계 부트 시스템** - 대용량 커널 로딩 지원 (최대 80KB+)
+  - Stage 1: BIOS 호환 512바이트 부트로더 (MBR)
+  - Stage 2: 확장 부트로더 (GDT 설정, A20 활성화, 보호모드 전환, 커널 로딩)
 - **GDT (Global Descriptor Table)** 구성
 - **IDT (Interrupt Descriptor Table)** 및 인터럽트 처리
+- **PIC (Programmable Interrupt Controller)** 지원
 
 ### 💻 하드웨어 지원
-- **VGA 텍스트 모드** (80x25 컬러 텍스트)
-- **키보드 드라이버** - PS/2 키보드 지원
-- **CPU 정보 검출** - CPUID를 통한 프로세서 특성 감지
-- **FPU (Floating Point Unit)** 지원
-- **HDD (하드 디스크)** - ATA/IDE 인터페이스 기본 지원
+- **VGA 텍스트 모드** (80x25 컬러 텍스트, 하드웨어 커서)
+- **키보드 드라이버** - PS/2 키보드 지원 (스캔코드 → ASCII 변환)
+- **CPU 정보 검출** - CPUID를 통한 프로세서 특성, 캐시, 코어 정보 감지
+- **FPU (Floating Point Unit)** 완전 지원 및 초기화
+- **HDD (하드 디스크)** - ATA/IDE 인터페이스 (LBA28 모드)
+- **타이머 인터럽트** - 시스템 틱 및 스케줄링
 
 ### 🧠 커널 기능
-- **메모리 관리** - 기본적인 메모리 할당 및 관리
-- **프로세스 관리** - 멀티태스킹 지원 (기본 스케줄러)
-- **시스템 콜** - fork, exit, getpid, sleep, yield, kill, waitpid 지원
-- **터미널 인터페이스** - 컬러 텍스트 출력 및 기본 명령어 처리
-- **컨텍스트 스위칭** - 프로세스 간 전환
+- **메모리 관리** - CMOS 및 프로브 기반 메모리 감지
+- **프로세스 관리** - 멀티태스킹 지원 (기본 스케줄러, 컨텍스트 스위칭)
+- **시스템 콜** - fork, exit, getpid, sleep, yield, kill, waitpid, exec 지원
+- **터미널 인터페이스** - 컬러 텍스트 출력, 스크롤링, 커서 제어
+- **파일 시스템** - FAT32 완전 지원 (포맷, 읽기/쓰기, 디렉터리 관리)
+- **컨텍스트 스위칭** - 어셈블리 최적화된 프로세스 간 전환
+- **동적 메모리 관리** - 기본적인 힙 관리자 구현
 
 ## 🏗️ 프로젝트 구조
 
 ```
 my-os/
 ├── boot/                     # 부트로더 관련 파일
-│   ├── bootloader.asm       # 메인 부트로더
-│   ├── disk.asm            # 디스크 I/O 함수
-│   └── gdt.asm             # Global Descriptor Table
+│   ├── stage1.asm           # 1단계 부트로더 (512바이트, MBR)
+│   └── stage2.asm           # 2단계 부트로더 (확장 기능)
 ├── kernel/                   # 커널 소스 코드
-│   ├── kernel_entry.asm    # 커널 진입점 (어셈블리)
-│   ├── kernel_main.c       # 커널 메인 함수
-│   ├── kernel.ld           # 링커 스크립트
-│   ├── include/            # 헤더 파일
-│   │   ├── kernel.h        # 메인 커널 헤더
-│   │   ├── common/         # 공통 유틸리티
-│   │   ├── cpu/            # CPU 관련
-│   │   ├── interrupts/     # 인터럽트 처리
-│   │   ├── keyboard/       # 키보드 드라이버
-│   │   ├── memory/         # 메모리 관리
-│   │   ├── process/        # 프로세스 관리
-│   │   ├── storage/        # 저장장치 드라이버
-│   │   ├── syscalls/       # 시스템 콜
-│   │   ├── terminal/       # 터미널 인터페이스
-│   │   └── vga/            # VGA 그래픽
-│   └── src/                # 구현 파일
-│       ├── common/         # 공통 함수 구현
-│       ├── cpu/            # CPU/FPU 드라이버
-│       ├── interrupts/     # IDT 및 인터럽트 핸들러
-│       ├── keyboard/       # 키보드 입력 처리
-│       ├── memory/         # 메모리 할당/관리
-│       ├── process/        # 프로세스 생성/스케줄링
-│       ├── storage/        # HDD 드라이버
-│       ├── syscalls/       # 시스템 콜 구현
-│       ├── terminal/       # 터미널 출력
-│       └── vga/            # VGA 텍스트 모드
+│   ├── kernel_entry.asm     # 커널 진입점 (어셈블리)
+│   ├── kernel_main.c        # 커널 메인 함수
+│   ├── kernel.ld            # 링커 스크립트
+│   ├── include/             # 헤더 파일
+│   │   ├── kernel.h         # 메인 커널 헤더
+│   │   ├── common/          # 공통 유틸리티
+│   │   │   ├── types.h      # 기본 타입 정의
+│   │   │   └── utils.h      # 유틸리티 함수
+│   │   ├── cpu/             # CPU 관련
+│   │   │   ├── cpu.h        # CPU 정보 및 기능
+│   │   │   └── fpu.h        # 부동소수점 유닛
+│   │   ├── interrupts/      # 인터럽트 처리
+│   │   │   └── interrupts.h # IDT 및 인터럽트 핸들러
+│   │   ├── keyboard/        # 키보드 드라이버
+│   │   │   └── keyboard.h   # 키보드 입력 처리
+│   │   ├── memory/          # 메모리 관리
+│   │   │   └── memory.h     # 메모리 감지 및 관리
+│   │   ├── process/         # 프로세스 관리
+│   │   │   └── process.h    # 프로세스 및 스케줄링
+│   │   ├── storage/         # 저장장치 드라이버
+│   │   │   ├── hdd.h        # ATA/IDE 하드디스크
+│   │   │   └── fat32.h      # FAT32 파일시스템
+│   │   ├── syscalls/        # 시스템 콜
+│   │   │   └── syscalls.h   # 시스템 콜 인터페이스
+│   │   ├── terminal/        # 터미널 인터페이스
+│   │   │   └── terminal.h   # 텍스트 출력 관리
+│   │   └── vga/             # VGA 그래픽
+│   │       └── vga.h        # VGA 텍스트 모드
+│   └── src/                 # 구현 파일
+│       ├── common/          # 공통 함수 구현
+│       │   └── utils.c      # 문자열, 메모리 함수
+│       ├── cpu/             # CPU/FPU 드라이버
+│       │   ├── cpu.c        # CPU 정보 감지
+│       │   └── fpu.c        # FPU 초기화 및 제어
+│       ├── interrupts/      # IDT 및 인터럽트 핸들러
+│       │   ├── idt.c        # IDT 설정
+│       │   ├── interrupt_handlers.asm  # 어셈블리 핸들러
+│       │   └── interrupt_handlers.c    # C 인터럽트 핸들러
+│       ├── keyboard/        # 키보드 입력 처리
+│       │   └── keyboard.c   # 스캔코드 → ASCII 변환
+│       ├── memory/          # 메모리 할당/관리
+│       │   └── memory.c     # 메모리 감지 및 할당
+│       ├── process/         # 프로세스 생성/스케줄링
+│       │   ├── process.c    # 프로세스 관리
+│       │   └── context_switch.asm      # 컨텍스트 스위칭
+│       ├── storage/         # 저장장치 드라이버
+│       │   ├── hdd.c        # ATA/IDE 드라이버
+│       │   └── fat32.c      # FAT32 파일시스템
+│       ├── syscalls/        # 시스템 콜 구현
+│       │   └── syscalls.c   # 시스템 콜 핸들러
+│       ├── terminal/        # 터미널 출력
+│       │   └── terminal.c   # VGA 텍스트 출력
+│       └── vga/             # VGA 텍스트 모드
+│           └── vga.c        # VGA 하드웨어 제어
 ├── build/                   # 빌드 출력 파일
-└── Makefile                # 빌드 시스템
+│   ├── *.o                  # 오브젝트 파일들
+│   ├── *.bin                # 바이너리 파일들
+│   └── hard-disk.img        # 부팅 가능한 디스크 이미지
+├── create_hdd.sh            # 하드디스크 이미지 생성 스크립트
+├── move_file.sh             # 파일 이동 유틸리티 스크립트
+└── Makefile                 # 빌드 시스템
 ```
 
 ## 🛠️ 개발 환경 설정
@@ -108,15 +147,21 @@ make all
 
 3. **개별 컴포넌트 빌드:**
 ```bash
-make bootloader    # 부트로더만 빌드
-make kernel        # 커널만 빌드
-make hdd          # 하드디스크 이미지 생성
+make stage1      # 1단계 부트로더만 빌드
+make stage2      # 2단계 부트로더만 빌드  
+make bootloader  # 두 부트로더 모두 빌드
+make kernel      # 커널만 빌드
+make hdd         # 하드디스크 이미지 생성
+make structure   # 프로젝트 구조 표시
 ```
 
 4. **QEMU에서 실행:**
 ```bash
 # 하드디스크 이미지로 부팅
-qemu-system-i386 -drive format=raw,file=build/hard-disk.img
+make run
+
+# 또는 직접 실행
+qemu-system-i386 -drive format=raw,file=build/hard-disk.img -m 64
 
 # 디버그 모드로 실행
 make debug
@@ -130,61 +175,96 @@ make clean        # 빌드 파일 삭제
 ## 🔍 시스템 사양
 
 ### 메모리 레이아웃
-- **부트로더:** `0x7C00` (BIOS 표준)
-- **커널 로드 주소:** `0x1000` (4KB)
-- **스택:** `0x9000` (36KB)
+- **1단계 부트로더:** `0x7C00` (BIOS 표준, 512바이트)
+- **2단계 부트로더:** `0x7E00` (1단계 직후, 다중 섹터)
+- **커널 로드 주소:** `0x10000` (64KB, 안전한 위치)
+- **스택:** `0x90000` (576KB, 보호모드용)
 - **VGA 버퍼:** `0xB8000` (VGA 텍스트 모드)
 
+### 디스크 레이아웃
+- **섹터 0:** 1단계 부트로더 (512바이트)
+- **섹터 1:** 예약됨
+- **섹터 2-9:** 2단계 부트로더 (최대 4KB)
+- **섹터 10+:** 커널 바이너리 (최대 80KB+)
+
+### 기술적 특징
+- **크로스 컴파일:** i686-elf-gcc 툴체인 사용
+- **링커 스크립트:** 정확한 메모리 레이아웃 제어
+- **모듈식 설계:** 각 서브시스템이 독립적으로 개발/테스트 가능
+- **하드웨어 추상화:** 포트 I/O 래퍼 함수로 하드웨어 접근
+- **인터럽트 기반:** 비동기 이벤트 처리 (키보드, 타이머)
+- **메모리 안전성:** 스택 오버플로우 방지를 위한 충분한 여유 공간
+- **어셈블리 최적화:** 핵심 부분은 어셈블리로 최적화
+- **ELF 바이너리 생성:** 표준 ELF32 형식으로 컴파일
+
 ### 지원하는 시스템 콜
-- `SYS_EXIT` - 프로세스 종료
-- `SYS_FORK` - 새 프로세스 생성
-- `SYS_GETPID` - 프로세스 ID 조회
-- `SYS_SLEEP` - 프로세스 일시정지
-- `SYS_YIELD` - CPU 양보
-- `SYS_KILL` - 프로세스 종료 시그널
-- `SYS_WAITPID` - 자식 프로세스 대기
+- `SYS_EXIT` (1) - 프로세스 종료
+- `SYS_FORK` (2) - 새 프로세스 생성
+- `SYS_GETPID` (3) - 프로세스 ID 조회
+- `SYS_SLEEP` (4) - 프로세스 일시정지
+- `SYS_YIELD` (5) - CPU 양보
+- `SYS_KILL` (6) - 프로세스 종료 시그널
+- `SYS_WAITPID` (7) - 자식 프로세스 대기
+- `SYS_EXEC` (8) - 프로그램 실행
+
+### 파일 시스템 기능
+- **FAT32 완전 지원** - 포맷, 마운트, 파일 I/O
+- **파일 작업** - 생성, 읽기, 쓰기, 삭제, 크기 조회
+- **디렉터리 작업** - 생성, 삭제, 탐색, 현재 디렉터리 변경
+- **롱 파일네임** (LFN) 지원
+- **파일 속성** 관리 (읽기전용, 숨김, 시스템 등)
 
 ### 키보드 지원
 - **표준 QWERTY 레이아웃**
-- **Shift, Ctrl, Alt 키 지원**
-- **Caps Lock 지원**
-- **특수 키 (Enter, Backspace, Tab, ESC) 처리**
+- **수식어 키** - Shift, Ctrl, Alt 키 지원
+- **Caps Lock** 토글 기능
+- **특수 키** - Enter, Backspace, Tab, ESC, Space 처리
+- **기능 키** - F1, F2, F3 지원
+- **스캔코드** → ASCII 변환 테이블
+- **입력 버퍼링** - 키보드 입력 큐 관리
 
 ## 🚧 개발 진행 상황
 
 ### ✅ 완료된 기능
-- [x] 부트로더 (16비트 → 32비트 모드 전환)
-- [x] GDT 및 보호모드 설정
-- [x] IDT 및 인터럽트 처리
-- [x] VGA 텍스트 모드 드라이버
-- [x] 키보드 입력 처리
-- [x] 기본 메모리 관리
-- [x] CPU 정보 검출 (CPUID)
-- [x] FPU 초기화
-- [x] 프로세스 관리 기초
-- [x] 시스템 콜 인터페이스
-- [x] HDD 인터페이스 기초
-- [x] 터미널 인터페이스
+- [x] **2단계 부트로더** (16비트 → 32비트 모드 전환)
+- [x] **GDT 및 보호모드** 설정
+- [x] **IDT 및 인터럽트 처리** (타이머, 키보드)
+- [x] **PIC 초기화** 및 IRQ 관리
+- [x] **VGA 텍스트 모드** 드라이버 (하드웨어 커서 포함)
+- [x] **키보드 입력 처리** (완전한 스캔코드 → ASCII 변환)
+- [x] **메모리 관리** (CMOS/프로브 방식 메모리 감지)
+- [x] **CPU 정보 검출** (CPUID, 캐시, 코어/스레드 정보)
+- [x] **FPU 완전 초기화** 및 제어
+- [x] **프로세스 관리** 기초 (PCB, 스케줄러)
+- [x] **컨텍스트 스위칭** (어셈블리 최적화)
+- [x] **시스템 콜 인터페이스** (8개 시스템 콜)
+- [x] **ATA/IDE HDD 드라이버** (LBA28 모드)
+- [x] **FAT32 파일시스템** 완전 구현
+- [x] **터미널 인터페이스** (스크롤, 색상, 커서)
+- [x] **유틸리티 함수들** (문자열, 메모리, 변환 함수)
 
 ### 🔄 진행 중인 기능
-- [ ] 완전한 프로세스 스케줄러
-- [ ] 파일 시스템
-- [ ] 네트워크 스택
-- [ ] 그래픽 모드 지원
+- [ ] **완전한 멀티프로세싱** (다중 프로세스 동시 실행)
+- [ ] **메모리 보호** 및 가상 메모리
+- [ ] **사용자 모드** 지원
+- [ ] **ELF 실행 파일** 로더
 
 ### 📋 향후 계획
-- [ ] 동적 메모리 할당 개선
-- [ ] 사용자 모드 지원
-- [ ] 멀티코어 지원
-- [ ] USB 드라이버
-- [ ] 오디오 지원
+- [ ] **페이징** 및 가상 메모리 관리
+- [ ] **동적 메모리 할당** (malloc/free)
+- [ ] **네트워킹 스택** (기본 TCP/IP)
+- [ ] **그래픽 모드** 지원 (VESA)
+- [ ] **USB 드라이버** 및 장치 지원
+- [ ] **멀티코어** 지원 (SMP)
+- [ ] **오디오 드라이버** 기초
+- [ ] **쉘 및 명령어** 인터프리터
 
 ## 🔧 개발 가이드
 
 ### 새로운 드라이버 추가
 1. `kernel/include/` 에 헤더 파일 생성
 2. `kernel/src/` 에 구현 파일 작성
-3. `Makefile` 에 소스 파일 추가
+3. `Makefile` 에 소스 파일 추가 (KERNEL_C_SOURCES 및 KERNEL_C_OBJS)
 4. `kernel_main.c` 에서 초기화 함수 호출
 
 ### 시스템 콜 추가
@@ -192,22 +272,35 @@ make clean        # 빌드 파일 삭제
 2. `kernel/src/syscalls/syscalls.c` 에 핸들러 구현
 3. `syscall_handler` 함수에 새 케이스 추가
 
+### 인터럽트 핸들러 추가
+1. `kernel/src/interrupts/interrupt_handlers.asm` 에 어셈블리 래퍼 추가
+2. `kernel/src/interrupts/interrupt_handlers.c` 에 C 핸들러 구현
+3. `kernel/src/interrupts/idt.c` 에서 IDT 엔트리 설정
+
 ### 디버깅
-- QEMU 모니터 모드: `Ctrl+Alt+2`
-- GDB 디버깅: `make debug` 후 GDB 연결
-- 시리얼 출력: `/dev/ttyS0` (QEMU 시리얼 포트)
+- **QEMU 모니터 모드:** `Ctrl+Alt+2`
+- **GDB 디버깅:** `make debug` 후 GDB 연결
+- **시리얼 출력:** `/dev/ttyS0` (QEMU 시리얼 포트)
+- **메모리 덤프:** QEMU 모니터에서 `info mem`, `x` 명령어 사용
 
 ## 📚 학습 자료
 
 ### 운영체제 개발 참고서
 - "Operating Systems: Design and Implementation" - Tanenbaum
-- "Understanding the Linux Kernel" - Bovet & Cesati
-- OSDev Wiki: https://wiki.osdev.org/
-- Intel 80386 Programmer's Reference Manual
+- "Understanding the Linux Kernel" - Bovet & Cesati  
+- "Intel 64 and IA-32 Architectures Software Developer's Manual"
+- **OSDev Wiki:** https://wiki.osdev.org/
+- **Bran's Kernel Development Tutorial**
 
 ### 어셈블리 프로그래밍
-- NASM 문서: https://nasm.us/docs.php
-- x86 Assembly Guide: https://cs.virginia.edu/~evans/cs216/guides/x86.html
+- **NASM 문서:** https://nasm.us/docs.php
+- **x86 Assembly Guide:** https://cs.virginia.edu/~evans/cs216/guides/x86.html
+- **Intel x86 Instruction Set Reference**
+
+### 파일 시스템 및 하드웨어
+- **Microsoft FAT32 File System Specification**
+- **ATA/ATAPI Command Set Standards**
+- **VGA Programming Documentation**
 
 ## 🤝 기여하기
 

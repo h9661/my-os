@@ -89,7 +89,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Create the hard disk image
-$(HDD_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
+$(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	./create_hdd.sh
 
 # Build the bootloader
@@ -187,9 +187,7 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all       - Build the complete OS image"
-	@echo "  stage1    - Build only Stage 1 bootloader (512 bytes)"
-	@echo "  stage2    - Build only Stage 2 loader (4KB)"
-	@echo "  bootloader- Build both Stage 1 and Stage 2"
+	@echo "  bootloader- Build only the bootloader"
 	@echo "  kernel    - Build only the kernel"
 	@echo "  hdd       - Create the hard disk image"
 	@echo "  run       - Run the OS in QEMU"

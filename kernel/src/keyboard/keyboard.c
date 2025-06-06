@@ -129,6 +129,7 @@ void keyboard_process_input(uint8_t scancode) {
                 keyboard_state.alt_pressed = false;
                 break;
         }
+
         return;
     }
     
@@ -149,6 +150,42 @@ void keyboard_process_input(uint8_t scancode) {
             
         case KEY_CAPS_LOCK:
             keyboard_state.caps_lock = !keyboard_state.caps_lock;
+            break;
+            
+        case KEY_UP:
+            if (keyboard_state.ctrl_pressed) {
+                terminal_scroll_up(1);
+            }
+            break;
+            
+        case KEY_DOWN:
+            if (keyboard_state.ctrl_pressed) {
+                terminal_scroll_down(1);
+            }
+            break;
+            
+        case KEY_PAGE_UP:
+            terminal_page_up();
+            break;
+            
+        case KEY_PAGE_DOWN:
+            terminal_page_down();
+            break;
+            
+        case KEY_HOME:
+            if (keyboard_state.ctrl_pressed) {
+                /* Scroll to top of buffer */
+                if (terminal.total_lines > VGA_HEIGHT) {
+                    terminal.scroll_offset = terminal.total_lines - VGA_HEIGHT;
+                    terminal_refresh_display();
+                }
+            }
+            break;
+            
+        case KEY_END:
+            if (keyboard_state.ctrl_pressed) {
+                terminal_scroll_to_bottom();
+            }
             break;
             
         default: {

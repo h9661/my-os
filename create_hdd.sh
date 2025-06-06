@@ -7,7 +7,8 @@ set -e  # Exit on error
 
 # Constants
 HDD_IMAGE="build/hard-disk.img"
-BOOTLOADER_BIN="build/bootloader.bin"
+STAGE1_BIN="build/stage1.bin"
+STAGE2_BIN="build/stage2.bin"
 KERNEL_BIN="build/kernel.bin"
 HDD_SIZE_MB=10  # Hard disk image size (10MB)
 
@@ -45,13 +46,16 @@ main() {
     # Stage 2: Create blank hard disk image
     create_blank_image
     
-    # Stage 3: Install bootloader (MBR - first sector)
-    install_bootloader
+    # Stage 3: Install Stage 1 bootloader (MBR - sector 0)
+    install_stage1
     
-    # Stage 4: Install kernel (starting from second sector)
+    # Stage 4: Install Stage 2 bootloader (sectors 2-9)
+    install_stage2
+    
+    # Stage 5: Install kernel (starting from sector 10)
     install_kernel
     
-    # Stage 5: Show image information
+    # Stage 6: Show image information
     show_image_info
     
     log_success "Hard disk image created successfully: $HDD_IMAGE"
@@ -62,9 +66,15 @@ main() {
 check_required_files() {
     log_info "Checking required files..."
     
-    if [ ! -f "$BOOTLOADER_BIN" ]; then
-        log_error "Bootloader binary not found: $BOOTLOADER_BIN"
-        log_info "Please run: make bootloader"
+    if [ ! -f "$STAGE1_BIN" ]; then
+        log_error "Stage 1 bootloader binary not found: $STAGE1_BIN"
+        log_info "Please run: make stage1"
+        exit 1
+    fi
+    
+    if [ ! -f "$STAGE2_BIN" ]; then
+        log_error "Stage 2 bootloader binary not found: $STAGE2_BIN"
+        log_info "Please run: make stage2"
         exit 1
     fi
     
@@ -74,10 +84,18 @@ check_required_files() {
         exit 1
     fi
     
-    # Check bootloader size (must be exactly 512 bytes)
-    BOOTLOADER_SIZE=$(stat -f%z "$BOOTLOADER_BIN" 2>/dev/null || stat -c%s "$BOOTLOADER_BIN" 2>/dev/null)
-    if [ "$BOOTLOADER_SIZE" -ne 512 ]; then
-        log_error "Bootloader must be exactly 512 bytes, but got $BOOTLOADER_SIZE bytes"
+    # Check Stage 1 size (must be exactly 512 bytes)
+    STAGE1_SIZE=$(stat -f%z "$STAGE1_BIN" 2>/dev/null || stat -c%s "$STAGE1_BIN" 2>/dev/null)
+    if [ "$STAGE1_SIZE" -ne 512 ]; then
+        log_error "Stage 1 bootloader must be exactly 512 bytes, but got $STAGE1_SIZE bytes"
+        exit 1
+    fi
+    
+    # Check Stage 2 size (should be reasonable, up to 4KB = 8 sectors)
+    STAGE2_SIZE=$(stat -f%z "$STAGE2_BIN" 2>/dev/null || stat -c%s "$STAGE2_BIN" 2>/dev/null)
+    STAGE2_MAX_SIZE=$((8 * 512))  # 8 sectors = 4KB
+    if [ "$STAGE2_SIZE" -gt "$STAGE2_MAX_SIZE" ]; then
+        log_error "Stage 2 bootloader too large: $STAGE2_SIZE bytes (max: $STAGE2_MAX_SIZE bytes)"
         exit 1
     fi
     
@@ -99,28 +117,40 @@ create_blank_image() {
     log_success "Blank image created: $HDD_IMAGE"
 }
 
-# Install bootloader to MBR
-install_bootloader() {
-    log_info "Installing bootloader to MBR (sector 0)..."
+# Install Stage 1 bootloader to MBR
+install_stage1() {
+    log_info "Installing Stage 1 bootloader to MBR (sector 0)..."
     
-    # Install bootloader to first sector (MBR) of hard disk image
+    # Install Stage 1 to first sector (MBR) of hard disk image
     # Copy exactly 512 bytes to sector 0
     # conv=notrunc: overwrite without truncating existing file
-    dd if="$BOOTLOADER_BIN" of="$HDD_IMAGE" bs=512 count=1 conv=notrunc status=none
+    dd if="$STAGE1_BIN" of="$HDD_IMAGE" bs=512 count=1 conv=notrunc status=none
     
-    log_success "Bootloader installed to MBR"
+    log_success "Stage 1 bootloader installed to MBR"
 }
 
-# Install kernel starting from sector 1
+# Install Stage 2 bootloader starting from sector 2
+install_stage2() {
+    log_info "Installing Stage 2 bootloader starting from sector 2..."
+    
+    # Install Stage 2 starting from sector 2 (skip sector 1 for safety)
+    # seek=2: skip 2 sectors (1024 bytes) in output file before writing
+    # This leaves sector 1 empty and places Stage 2 at sectors 2-9
+    dd if="$STAGE2_BIN" of="$HDD_IMAGE" bs=512 seek=2 conv=notrunc status=none
+    
+    log_success "Stage 2 bootloader installed starting from sector 2"
+}
+
+# Install kernel starting from sector 10
 install_kernel() {
-    log_info "Installing kernel starting from sector 1..."
+    log_info "Installing kernel starting from sector 10..."
     
-    # Install kernel starting from second sector (sector 1)
-    # seek=1: skip 1 sector (512 bytes) in output file before writing
-    # This places kernel right after bootloader (sector 0)
-    dd if="$KERNEL_BIN" of="$HDD_IMAGE" bs=512 seek=1 conv=notrunc status=none
+    # Install kernel starting from sector 10 (matching KERNEL_START_SECTOR in stage2.asm)
+    # seek=10: skip 10 sectors (5120 bytes) in output file before writing
+    # This places kernel after Stage 1 (sector 0), gap (sector 1), and Stage 2 (sectors 2-9)
+    dd if="$KERNEL_BIN" of="$HDD_IMAGE" bs=512 seek=10 conv=notrunc status=none
     
-    log_success "Kernel installed starting from sector 1"
+    log_success "Kernel installed starting from sector 10"
 }
 
 # Show hard disk image information
@@ -136,14 +166,21 @@ show_image_info() {
     TOTAL_SECTORS=$((HDD_SIZE / 512))
     echo "  Total sectors: $TOTAL_SECTORS"
     
-    # Bootloader information
-    BOOTLOADER_SIZE=$(stat -f%z "$BOOTLOADER_BIN" 2>/dev/null || stat -c%s "$BOOTLOADER_BIN" 2>/dev/null)
-    echo "  Bootloader: sector 0 ($BOOTLOADER_SIZE bytes)"
+    # Stage 1 bootloader information
+    STAGE1_SIZE=$(stat -f%z "$STAGE1_BIN" 2>/dev/null || stat -c%s "$STAGE1_BIN" 2>/dev/null)
+    echo "  Stage 1 Bootloader: sector 0 ($STAGE1_SIZE bytes)"
+    
+    # Stage 2 bootloader information
+    STAGE2_SIZE=$(stat -f%z "$STAGE2_BIN" 2>/dev/null || stat -c%s "$STAGE2_BIN" 2>/dev/null)
+    STAGE2_SECTORS=$(((STAGE2_SIZE + 511) / 512))  # Round up
+    STAGE2_END_SECTOR=$((2 + STAGE2_SECTORS - 1))
+    echo "  Stage 2 Bootloader: sectors 2-$STAGE2_END_SECTOR ($STAGE2_SIZE bytes)"
     
     # Kernel information
     KERNEL_SIZE=$(stat -f%z "$KERNEL_BIN" 2>/dev/null || stat -c%s "$KERNEL_BIN" 2>/dev/null)
     KERNEL_SECTORS=$(((KERNEL_SIZE + 511) / 512))  # Round up calculation
-    echo "  Kernel: sectors 1-$KERNEL_SECTORS ($KERNEL_SIZE bytes)"
+    KERNEL_END_SECTOR=$((10 + KERNEL_SECTORS - 1))
+    echo "  Kernel: sectors 10-$KERNEL_END_SECTOR ($KERNEL_SIZE bytes)"
     
     # Verify boot signature
     echo

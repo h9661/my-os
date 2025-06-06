@@ -18,12 +18,14 @@ KERNEL_INC_DIR = $(KERNEL_DIR)/include
 
 # Target files
 HDD_IMAGE = $(BUILD_DIR)/hard-disk.img
-BOOT_BIN = $(BUILD_DIR)/bootloader.bin
+STAGE1_BIN = $(BUILD_DIR)/stage1.bin
+STAGE2_BIN = $(BUILD_DIR)/stage2.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 KERNEL_ELF = $(BUILD_DIR)/kernel_elf.o
 
 # Source files
-BOOT_SRC = $(BOOT_DIR)/bootloader.asm
+STAGE1_SRC = $(BOOT_DIR)/stage1.asm
+STAGE2_SRC = $(BOOT_DIR)/stage2.asm
 KERNEL_ENTRY = $(KERNEL_DIR)/kernel_entry.asm
 KERNEL_MAIN = $(KERNEL_DIR)/kernel_main.c
 
@@ -40,7 +42,8 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/keyboard/keyboard.c \
                    $(KERNEL_SRC_DIR)/process/process.c \
                    $(KERNEL_SRC_DIR)/syscalls/syscalls.c \
-                   $(KERNEL_SRC_DIR)/storage/hdd.c
+                   $(KERNEL_SRC_DIR)/storage/hdd.c \
+                   $(KERNEL_SRC_DIR)/storage/fat32.c
 
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
@@ -61,16 +64,21 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/process.o \
                 $(BUILD_DIR)/syscalls.o \
-                $(BUILD_DIR)/hdd.o
+                $(BUILD_DIR)/hdd.o \
+                $(BUILD_DIR)/fat32.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
                   $(BUILD_DIR)/context_switch.o
 
-.PHONY: all clean run debug bootloader kernel hdd structure help
+.PHONY: all clean run debug stage1 stage2 kernel hdd structure help
 
 all: $(HDD_IMAGE)
 
-bootloader: $(BOOT_BIN)
+stage1: $(STAGE1_BIN)
+
+stage2: $(STAGE2_BIN)
+
+bootloader: stage1 stage2
 
 kernel: $(KERNEL_BIN)
 
@@ -87,11 +95,15 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Create the hard disk image
-$(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
+$(HDD_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	./create_hdd.sh
 
-# Build the bootloader
-$(BOOT_BIN): $(BOOT_SRC) $(BOOT_DIR)/gdt.asm $(BOOT_DIR)/disk.asm | $(BUILD_DIR)
+# Build Stage 1 bootloader (512 bytes)
+$(STAGE1_BIN): $(STAGE1_SRC) | $(BUILD_DIR)
+	$(NASM) -f bin -o $@ $<
+
+# Build Stage 2 bootloader
+$(STAGE2_BIN): $(STAGE2_SRC) | $(BUILD_DIR)
 	$(NASM) -f bin -o $@ $<
 
 # Build the kernel binary
@@ -161,6 +173,10 @@ $(BUILD_DIR)/syscalls.o: $(KERNEL_SRC_DIR)/syscalls/syscalls.c | $(BUILD_DIR)
 $(BUILD_DIR)/hdd.o: $(KERNEL_SRC_DIR)/storage/hdd.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
+# Build fat32.c
+$(BUILD_DIR)/fat32.o: $(KERNEL_SRC_DIR)/storage/fat32.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
 # Build context_switch.asm
 $(BUILD_DIR)/context_switch.o: $(KERNEL_SRC_DIR)/process/context_switch.asm | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
@@ -181,7 +197,9 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all       - Build the complete OS image"
-	@echo "  bootloader- Build only the bootloader"
+	@echo "  stage1    - Build only Stage 1 bootloader"
+	@echo "  stage2    - Build only Stage 2 bootloader"
+	@echo "  bootloader- Build both boot stages"
 	@echo "  kernel    - Build only the kernel"
 	@echo "  hdd       - Create the hard disk image"
 	@echo "  run       - Run the OS in QEMU"

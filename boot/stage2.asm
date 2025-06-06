@@ -9,7 +9,7 @@
 
 ; === Constants ===
 KERNEL_OFFSET equ 0x10000       ; Load kernel at 64KB (safe location)
-KERNEL_SECTORS equ 81           ; Max sectors for kernel (81 * 512 = 41472 bytes)
+KERNEL_SECTORS equ 85           ; Max sectors for kernel (85 * 512 = 43680 bytes)
 KERNEL_START_SECTOR equ 11      ; Kernel starts at sector 11
 
 ; GDT segment selectors

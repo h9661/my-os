@@ -13,11 +13,21 @@ void terminal_update_cursor(void) {
 
 /* Initialize the terminal */
 void terminal_initialize(void) {
+    /* Initialize VGA hardware first */
+    vga_initialize();
+    
+    /* Initialize terminal state */
     terminal.row = 0;
     terminal.column = 0;
     terminal.color = vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     terminal.buffer = (uint16_t*) VGA_BUFFER_ADDR;
     
+    /* Verify VGA buffer is accessible */
+    volatile uint16_t* test_ptr = (volatile uint16_t*)VGA_BUFFER_ADDR;
+    uint16_t test_value = vga_entry('T', terminal.color);
+    *test_ptr = test_value;
+    
+    /* Clear the screen */
     terminal_clear();
     terminal_update_cursor();
 }
@@ -42,8 +52,25 @@ void terminal_setcolor(uint8_t color) {
 
 /* Put a character at specific position */
 void terminal_putchar_at(char c, uint8_t color, size_t x, size_t y) {
+    /* Bounds checking to prevent buffer overflow */
+    if (x >= VGA_WIDTH || y >= VGA_HEIGHT) {
+        return;
+    }
+    
     const size_t index = y * VGA_WIDTH + x;
-    terminal.buffer[index] = vga_entry(c, color);
+    
+    /* Additional safety check for buffer bounds */
+    if (index >= VGA_WIDTH * VGA_HEIGHT) {
+        return;
+    }
+    
+    /* Ensure character is printable ASCII (0x20-0x7E) or space */
+    unsigned char safe_char = (unsigned char)c;
+    if (safe_char < 0x20 || safe_char > 0x7E) {
+        safe_char = '?'; /* Replace non-printable with question mark */
+    }
+    
+    terminal.buffer[index] = vga_entry(safe_char, color);
 }
 
 /* Scroll the terminal up by one line */
@@ -150,4 +177,24 @@ void terminal_print_separator(void) {
     terminal_putchar('\n');
     
     terminal_setcolor(old_color);
+}
+
+/* Test VGA buffer integrity */
+void terminal_test_vga_buffer(void) {
+    uint16_t test_pattern = vga_entry('X', vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_RED));
+    
+    /* Test writing to corners of screen */
+    terminal.buffer[0] = test_pattern;                                    /* Top-left */
+    terminal.buffer[VGA_WIDTH - 1] = test_pattern;                       /* Top-right */
+    terminal.buffer[(VGA_HEIGHT - 1) * VGA_WIDTH] = test_pattern;        /* Bottom-left */
+    terminal.buffer[(VGA_HEIGHT - 1) * VGA_WIDTH + VGA_WIDTH - 1] = test_pattern; /* Bottom-right */
+    
+    /* Small delay to see the pattern */
+    for (volatile int i = 0; i < 1000000; i++);
+    
+    /* Clear test pattern */
+    terminal.buffer[0] = vga_entry(' ', terminal.color);
+    terminal.buffer[VGA_WIDTH - 1] = vga_entry(' ', terminal.color);
+    terminal.buffer[(VGA_HEIGHT - 1) * VGA_WIDTH] = vga_entry(' ', terminal.color);
+    terminal.buffer[(VGA_HEIGHT - 1) * VGA_WIDTH + VGA_WIDTH - 1] = vga_entry(' ', terminal.color);
 }

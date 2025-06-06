@@ -36,7 +36,11 @@ typedef enum {
 uint8_t vga_entry_color(vga_color_t fg, vga_color_t bg);
 uint16_t vga_entry(unsigned char c, uint8_t color);
 
-/* Low-level output functions */
+/* VGA initialization */
+void vga_initialize(void);
+
+/* Low-level I/O functions */
+uint8_t vga_inb(uint16_t port);
 void vga_outb(uint16_t port, uint8_t value);
 void vga_set_cursor_position(uint16_t position);
 

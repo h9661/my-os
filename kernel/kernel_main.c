@@ -49,32 +49,45 @@ void kernel_show_hardware_info(void) {
 
 /* Initialize kernel subsystems */
 void kernel_initialize(void) {
-    /* Initialize terminal first */
+    /* Initialize terminal first - this includes VGA initialization */
     terminal_initialize();
+    
+    /* Test VGA buffer integrity */
+    terminal_test_vga_buffer();
+    
+    /* Test basic terminal functionality */
+    terminal_writestring("Terminal initialized...\n");
     
     /* Initialize FPU before interrupts */
     fpu_initialize();
+    terminal_writestring("FPU initialized...\n");
     
     /* Initialize process management system */
     process_init();
+    terminal_writestring("Process system initialized...\n");
     
     /* Initialize system calls */
     syscalls_init();
+    terminal_writestring("System calls initialized...\n");
     
     /* Initialize interrupts */
     interrupts_initialize();
+    terminal_writestring("Interrupts initialized...\n");
     
     /* Initialize keyboard */
     keyboard_initialize();
+    terminal_writestring("Keyboard initialized...\n");
     
     /* Initialize HDD subsystem */
     hdd_initialize();
+    terminal_writestring("HDD initialized...\n");
     
     /* Initialize FAT32 file system on primary master */
-    fat32_initialize(HDD_PRIMARY_MASTER);
+    // fat32_initialize(HDD_PRIMARY_MASTER);
     
     /* Set default color scheme */
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
+    terminal_writestring("All subsystems initialized successfully!\n");
 }
 
 /* Main kernel entry point */

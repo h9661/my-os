@@ -29,4 +29,7 @@ void terminal_backspace(void);
 void terminal_print_header(const char* title);
 void terminal_print_separator(void);
 
+/* Terminal diagnostic functions */
+void terminal_test_vga_buffer(void);
+
 #endif /* TERMINAL_H */

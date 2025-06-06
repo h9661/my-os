@@ -40,7 +40,8 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/keyboard/keyboard.c \
                    $(KERNEL_SRC_DIR)/process/process.c \
                    $(KERNEL_SRC_DIR)/syscalls/syscalls.c \
-                   $(KERNEL_SRC_DIR)/storage/hdd.c
+                   $(KERNEL_SRC_DIR)/storage/hdd.c \
+                   $(KERNEL_SRC_DIR)/storage/fat32.c
 
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
@@ -61,12 +62,13 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/keyboard.o \
                 $(BUILD_DIR)/process.o \
                 $(BUILD_DIR)/syscalls.o \
-                $(BUILD_DIR)/hdd.o
+                $(BUILD_DIR)/hdd.o \
+                $(BUILD_DIR)/fat32.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
                   $(BUILD_DIR)/context_switch.o
 
-.PHONY: all clean run debug bootloader kernel hdd structure help
+.PHONY: all clean run debug stage1 stage2 kernel hdd structure help
 
 all: $(HDD_IMAGE)
 
@@ -87,7 +89,7 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Create the hard disk image
-$(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
+$(HDD_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	./create_hdd.sh
 
 # Build the bootloader
@@ -161,6 +163,10 @@ $(BUILD_DIR)/syscalls.o: $(KERNEL_SRC_DIR)/syscalls/syscalls.c | $(BUILD_DIR)
 $(BUILD_DIR)/hdd.o: $(KERNEL_SRC_DIR)/storage/hdd.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
+# Build fat32.c
+$(BUILD_DIR)/fat32.o: $(KERNEL_SRC_DIR)/storage/fat32.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
 # Build context_switch.asm
 $(BUILD_DIR)/context_switch.o: $(KERNEL_SRC_DIR)/process/context_switch.asm | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
@@ -181,7 +187,9 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all       - Build the complete OS image"
-	@echo "  bootloader- Build only the bootloader"
+	@echo "  stage1    - Build only Stage 1 bootloader (512 bytes)"
+	@echo "  stage2    - Build only Stage 2 loader (4KB)"
+	@echo "  bootloader- Build both Stage 1 and Stage 2"
 	@echo "  kernel    - Build only the kernel"
 	@echo "  hdd       - Create the hard disk image"
 	@echo "  run       - Run the OS in QEMU"

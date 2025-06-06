@@ -18,12 +18,14 @@ KERNEL_INC_DIR = $(KERNEL_DIR)/include
 
 # Target files
 HDD_IMAGE = $(BUILD_DIR)/hard-disk.img
-BOOT_BIN = $(BUILD_DIR)/bootloader.bin
+STAGE1_BIN = $(BUILD_DIR)/stage1.bin
+STAGE2_BIN = $(BUILD_DIR)/stage2.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 KERNEL_ELF = $(BUILD_DIR)/kernel_elf.o
 
 # Source files
-BOOT_SRC = $(BOOT_DIR)/bootloader.asm
+STAGE1_SRC = $(BOOT_DIR)/stage1.asm
+STAGE2_SRC = $(BOOT_DIR)/stage2.asm
 KERNEL_ENTRY = $(KERNEL_DIR)/kernel_entry.asm
 KERNEL_MAIN = $(KERNEL_DIR)/kernel_main.c
 
@@ -72,7 +74,11 @@ KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
 
 all: $(HDD_IMAGE)
 
-bootloader: $(BOOT_BIN)
+stage1: $(STAGE1_BIN)
+
+stage2: $(STAGE2_BIN)
+
+bootloader: stage1 stage2
 
 kernel: $(KERNEL_BIN)
 
@@ -89,11 +95,15 @@ $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 # Create the hard disk image
-$(HDD_IMAGE): $(BOOT_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
+$(HDD_IMAGE): $(STAGE1_BIN) $(STAGE2_BIN) $(KERNEL_BIN) | $(BUILD_DIR)
 	./create_hdd.sh
 
-# Build the bootloader
-$(BOOT_BIN): $(BOOT_SRC) $(BOOT_DIR)/gdt.asm $(BOOT_DIR)/disk.asm | $(BUILD_DIR)
+# Build Stage 1 bootloader (512 bytes)
+$(STAGE1_BIN): $(STAGE1_SRC) | $(BUILD_DIR)
+	$(NASM) -f bin -o $@ $<
+
+# Build Stage 2 bootloader
+$(STAGE2_BIN): $(STAGE2_SRC) | $(BUILD_DIR)
 	$(NASM) -f bin -o $@ $<
 
 # Build the kernel binary
@@ -187,7 +197,9 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all       - Build the complete OS image"
-	@echo "  bootloader- Build only the bootloader"
+	@echo "  stage1    - Build only Stage 1 bootloader"
+	@echo "  stage2    - Build only Stage 2 bootloader"
+	@echo "  bootloader- Build both boot stages"
 	@echo "  kernel    - Build only the kernel"
 	@echo "  hdd       - Create the hard disk image"
 	@echo "  run       - Run the OS in QEMU"

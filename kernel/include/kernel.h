@@ -12,6 +12,7 @@
 #include "interrupts/interrupts.h"  // 추가
 #include "keyboard/keyboard.h"
 #include "storage/hdd.h"
+#include "storage/fat32.h"
 
 /* Kernel version information */
 #define KERNEL_VERSION_MAJOR 0

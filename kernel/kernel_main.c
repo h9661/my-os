@@ -1,5 +1,6 @@
 #include "include/kernel.h"
 #include "include/syscalls/syscalls.h"
+#include "include/timer/pit.h"
 
 /* Display kernel banner */
 void kernel_show_banner(void) {
@@ -47,6 +48,55 @@ void kernel_show_hardware_info(void) {
     terminal_print_separator();
 }
 
+/* Display timer information */
+void kernel_show_timer_info(void) {
+    terminal_print_separator();
+    terminal_writeline("Timer System Information:");
+    
+    char buffer[64];
+    uint32_t ticks = timer_get_ticks();
+    uint32_t seconds = timer_get_seconds();
+    uint32_t ms = timer_get_milliseconds();
+    
+    /* Convert numbers to strings and display */
+    terminal_writestring("System uptime: ");
+    int_to_string(seconds, buffer);
+    terminal_writestring(buffer);
+    terminal_writestring(" seconds (");
+    int_to_string(ms, buffer);
+    terminal_writestring(buffer);
+    terminal_writestring(" ms)\n");
+    
+    terminal_writestring("Total timer ticks: ");
+    int_to_string(ticks, buffer);
+    terminal_writestring(buffer);
+    terminal_writestring("\n");
+    
+    terminal_writestring("Timer frequency: ");
+    int_to_string(TIMER_FREQUENCY_100HZ, buffer);
+    terminal_writestring(buffer);
+    terminal_writeline(" Hz");
+    
+    terminal_print_separator();
+}
+
+/* Timer callback to show periodic activity */
+static volatile uint32_t heartbeat_counter = 0;
+
+void timer_heartbeat_callback(void) {
+    heartbeat_counter++;
+    /* Print a heartbeat every 5 seconds (500 ticks at 100Hz) */
+    if (heartbeat_counter % 500 == 0) {
+        terminal_setcolor(vga_entry_color(VGA_COLOR_GREEN, VGA_COLOR_BLACK));
+        terminal_writestring("[HEARTBEAT] ");
+        char buffer[32];
+        int_to_string(heartbeat_counter / 100, buffer);
+        terminal_writestring(buffer);
+        terminal_writeline("s uptime");
+        terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    }
+}
+
 /* Initialize kernel subsystems */
 void kernel_initialize(void) {
     /* Initialize terminal first - this includes VGA initialization */
@@ -73,6 +123,15 @@ void kernel_initialize(void) {
     /* Initialize interrupts */
     interrupts_initialize();
     terminal_writestring("Interrupts initialized...\n");
+    
+    /* Initialize PIT timer */
+    pit_initialize();
+    pit_set_frequency(TIMER_FREQUENCY_100HZ);
+    terminal_writestring("PIT timer initialized at 100Hz...\n");
+    
+    /* Set timer callback for heartbeat */
+    timer_set_callback(timer_heartbeat_callback);
+    terminal_writestring("Timer heartbeat callback enabled...\n");
     
     /* Initialize keyboard */
     keyboard_initialize();
@@ -102,6 +161,9 @@ void kernel_main(void) {
     /* Show hardware information */
     kernel_show_hardware_info();
     
+    /* Show timer information */
+    kernel_show_timer_info();
+    
     /* Enable interrupts */
     enable_interrupts();
     
@@ -109,12 +171,6 @@ void kernel_main(void) {
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
     terminal_writeline("Kernel initialized successfully!");
     terminal_writeline("Interrupts enabled. System ready.");
-    terminal_writeline("Keyboard driver loaded. You can now type!");
-    
-    /* Display prompt */
-    terminal_setcolor(vga_entry_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
-    terminal_writestring("SimpleOS> ");
-    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
     
     /* Main kernel loop - keep the kernel running */
     while (1) {

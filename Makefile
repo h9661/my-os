@@ -43,7 +43,8 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
                    $(KERNEL_SRC_DIR)/process/process.c \
                    $(KERNEL_SRC_DIR)/syscalls/syscalls.c \
                    $(KERNEL_SRC_DIR)/storage/hdd.c \
-                   $(KERNEL_SRC_DIR)/storage/fat32.c
+                   $(KERNEL_SRC_DIR)/storage/fat32.c \
+                   $(KERNEL_SRC_DIR)/timer/pit.c
 
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
@@ -65,7 +66,8 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/process.o \
                 $(BUILD_DIR)/syscalls.o \
                 $(BUILD_DIR)/hdd.o \
-                $(BUILD_DIR)/fat32.o
+                $(BUILD_DIR)/fat32.o \
+                $(BUILD_DIR)/pit.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
                   $(BUILD_DIR)/context_switch.o
@@ -175,6 +177,10 @@ $(BUILD_DIR)/hdd.o: $(KERNEL_SRC_DIR)/storage/hdd.c | $(BUILD_DIR)
 
 # Build fat32.c
 $(BUILD_DIR)/fat32.o: $(KERNEL_SRC_DIR)/storage/fat32.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -o $@ $<
+
+# Build pit.c
+$(BUILD_DIR)/pit.o: $(KERNEL_SRC_DIR)/timer/pit.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -o $@ $<
 
 # Build context_switch.asm

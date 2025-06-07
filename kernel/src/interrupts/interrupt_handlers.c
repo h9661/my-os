@@ -3,6 +3,7 @@
 #include "../../include/common/utils.h"
 #include "../../include/keyboard/keyboard.h"
 #include "../../include/process/process.h"
+#include "../../include/timer/pit.h"
 
 /* Helper function to send EOI signal to PIC */
 static inline void send_eoi(uint32_t int_no) {
@@ -18,6 +19,9 @@ static inline void send_eoi(uint32_t int_no) {
 
 /* Timer interrupt handler */
 void c_irq_handler_timer(void) {
+    /* Update timer tick count */
+    timer_tick();
+    
     /* Handle process scheduling on timer tick */
     scheduler_tick();
     

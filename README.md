@@ -1,4 +1,4 @@
-# Simple OS (SimpleOS)
+# CHANUX
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![Architecture](https://img.shields.io/badge/arch-i686-green.svg)
@@ -6,7 +6,7 @@
 ![License](https://img.shields.io/badge/license-MIT-red.svg)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
 
-**Simple OS**는 32비트 x86 아키텍처를 위한 교육용 운영체제입니다. 부트로더부터 커널까지 완전히 처음부터 개발된 단순하지만 완전한 운영체제로, 현대적인 운영체제의 핵심 기능들을 학습할 수 있도록 설계되었습니다.
+**CHANUX**는 32비트 x86 아키텍처를 위한 교육용 운영체제입니다. 부트로더부터 커널까지 완전히 처음부터 개발된 단순하지만 완전한 운영체제로, 현대적인 운영체제의 핵심 기능들을 학습할 수 있도록 설계되었습니다.
 
 ## 🚀 주요 특징
 

@@ -86,11 +86,11 @@ load_kernel_16bit:
     mov ax, KERNEL_OFFSET >> 4  ; Segment = 0x1000
     mov es, ax
     mov bx, 0                   ; Offset = 0 (ES:BX = 0x1000:0x0000 = 0x10000)
-    mov dh, KERNEL_SECTORS      ; Number of sectors (78)
+    mov dh, KERNEL_SECTORS      ; Number of sectors (85)
     mov dl, [boot_drive]        ; Boot drive number
     mov ch, 0                   ; Cylinder 0
-    mov cl, KERNEL_START_SECTOR ; Starting sector (10)
-    
+    mov cl, KERNEL_START_SECTOR ; Starting sector (11)
+
     ; Load kernel using BIOS disk services
     call disk_load_extended
     

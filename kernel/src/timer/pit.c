@@ -1,6 +1,7 @@
 #include "../../include/timer/pit.h"
 #include "../../include/terminal/terminal.h"
 #include "../../include/common/utils.h"
+#include "../../include/process/process.h"
 
 /* Global timer variables */
 volatile uint32_t system_ticks = 0;         /* Number of timer ticks since boot */
@@ -144,6 +145,9 @@ void timer_clear_callback(void) {
 void timer_tick(void) {
     /* Increment system tick counter */
     system_ticks++;
+    
+    /* Call scheduler tick for multitasking */
+    scheduler_tick();
     
     /* Call user callback if registered */
     if (timer_callback) {

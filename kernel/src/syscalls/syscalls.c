@@ -134,7 +134,11 @@ int sys_exec(const char* path, char* const argv[]) {
 
 /* Setup system call interrupt (INT 0x80) */
 void setup_syscall_interrupt(void) {
-    /* This would register the syscall handler with interrupt 0x80 */
-    /* Implementation depends on your interrupt system */
+    /* Register INT 0x80 handler in IDT */
+    extern void syscall_interrupt_handler(void);
+    
+    /* Set IDT gate for system call interrupt */
+    idt_set_gate(0x80, (uint32_t)syscall_interrupt_handler, 0x08, IDT_TYPE_INTERRUPT_GATE);
+    
     terminal_writeline("System call interrupt (INT 0x80) registered");
 }

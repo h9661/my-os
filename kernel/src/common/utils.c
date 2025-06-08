@@ -51,6 +51,42 @@ void int_to_string(int value, char* str) {
     }
 }
 
+/* Convert integer to hexadecimal string */
+void int_to_hex_string(uint32_t value, char* str) {
+    int i = 0;
+    
+    /* Handle 0 explicitly */
+    if (value == 0) {
+        str[i++] = '0';
+        str[i] = '\0';
+        return;
+    }
+    
+    /* Process individual hex digits */
+    while (value != 0) {
+        int remainder = value % 16;
+        if (remainder < 10) {
+            str[i++] = remainder + '0';
+        } else {
+            str[i++] = remainder - 10 + 'A';
+        }
+        value = value / 16;
+    }
+    
+    str[i] = '\0'; /* Null-terminate string */
+    
+    /* Reverse the string */
+    int start = 0;
+    int end = i - 1;
+    while (start < end) {
+        char temp = str[start];
+        str[start] = str[end];
+        str[end] = temp;
+        start++;
+        end--;
+    }
+}
+
 /* Compare two strings */
 int strcmp(const char* str1, const char* str2) {
     while (*str1 && (*str1 == *str2)) {

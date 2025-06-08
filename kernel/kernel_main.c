@@ -1,6 +1,7 @@
 #include "include/kernel.h"
 #include "include/syscalls/syscalls.h"
 #include "include/timer/pit.h"
+#include "include/process/process.h"
 
 /* Display kernel banner */
 void kernel_show_banner(void) {
@@ -171,6 +172,9 @@ void kernel_main(void) {
     terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
     terminal_writeline("Kernel initialized successfully!");
     terminal_writeline("Interrupts enabled. System ready.");
+    
+    /* Start context switching test */
+    process_test_context_switching();
     
     /* Main kernel loop - keep the kernel running */
     while (1) {

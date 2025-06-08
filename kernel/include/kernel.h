@@ -11,6 +11,7 @@
 #include "cpu/fpu.h"
 #include "interrupts/interrupts.h"  // 추가
 #include "keyboard/keyboard.h"
+#include "process/process.h"
 #include "storage/hdd.h"
 #include "storage/fat32.h"
 

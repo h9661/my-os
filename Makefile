@@ -49,7 +49,8 @@ KERNEL_C_SOURCES = $(KERNEL_MAIN) \
 # Assembly source files
 KERNEL_ASM_SOURCES = $(KERNEL_ENTRY) \
                      $(KERNEL_SRC_DIR)/interrupts/interrupt_handlers.asm \
-                     $(KERNEL_SRC_DIR)/process/context_switch.asm
+                     $(KERNEL_SRC_DIR)/process/context_switch.asm \
+                     $(KERNEL_SRC_DIR)/syscalls/syscall_interrupt.asm
 
 # Object files
 KERNEL_ENTRY_OBJ = $(BUILD_DIR)/kernel_entry.o
@@ -70,7 +71,8 @@ KERNEL_C_OBJS = $(BUILD_DIR)/kernel_main.o \
                 $(BUILD_DIR)/pit.o
 
 KERNEL_ASM_OBJS = $(BUILD_DIR)/interrupt_handlers_asm.o \
-                  $(BUILD_DIR)/context_switch.o
+                  $(BUILD_DIR)/context_switch.o \
+                  $(BUILD_DIR)/syscall_interrupt.o
 
 .PHONY: all clean run debug stage1 stage2 kernel hdd structure help
 
@@ -185,6 +187,10 @@ $(BUILD_DIR)/pit.o: $(KERNEL_SRC_DIR)/timer/pit.c | $(BUILD_DIR)
 
 # Build context_switch.asm
 $(BUILD_DIR)/context_switch.o: $(KERNEL_SRC_DIR)/process/context_switch.asm | $(BUILD_DIR)
+	$(NASM) $(NASMFLAGS) -o $@ $<
+
+# Build syscall_interrupt.asm
+$(BUILD_DIR)/syscall_interrupt.o: $(KERNEL_SRC_DIR)/syscalls/syscall_interrupt.asm | $(BUILD_DIR)
 	$(NASM) $(NASMFLAGS) -o $@ $<
 
 # Run the OS in QEMU

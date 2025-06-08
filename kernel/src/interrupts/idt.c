@@ -40,7 +40,29 @@ void interrupts_initialize(void) {
     /* Clear IDT */
     memset(&idt, 0, sizeof(idt));
     
-    /* Set hardware interrupt handlers */
+    /* Set CPU exception handlers (0-31) */
+    idt_set_gate(0, (uint32_t)exception_handler_0, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Division by zero */
+    idt_set_gate(1, (uint32_t)exception_handler_1, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Debug */
+    idt_set_gate(2, (uint32_t)exception_handler_2, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Non-maskable interrupt */
+    idt_set_gate(3, (uint32_t)exception_handler_3, 0x08, IDT_TYPE_TRAP_GATE);        /* Breakpoint (trap gate) */
+    idt_set_gate(4, (uint32_t)exception_handler_4, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Overflow */
+    idt_set_gate(5, (uint32_t)exception_handler_5, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Bound range exceeded */
+    idt_set_gate(6, (uint32_t)exception_handler_6, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Invalid opcode */
+    idt_set_gate(7, (uint32_t)exception_handler_7, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Device not available */
+    idt_set_gate(8, (uint32_t)exception_handler_8, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Double fault */
+    idt_set_gate(9, (uint32_t)exception_handler_9, 0x08, IDT_TYPE_INTERRUPT_GATE);   /* Coprocessor segment overrun */
+    idt_set_gate(10, (uint32_t)exception_handler_10, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Invalid TSS */
+    idt_set_gate(11, (uint32_t)exception_handler_11, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Segment not present */
+    idt_set_gate(12, (uint32_t)exception_handler_12, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Stack-segment fault */
+    idt_set_gate(13, (uint32_t)exception_handler_13, 0x08, IDT_TYPE_INTERRUPT_GATE); /* General protection fault */
+    idt_set_gate(14, (uint32_t)exception_handler_14, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Page fault */
+    idt_set_gate(15, (uint32_t)exception_handler_15, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Reserved */
+    idt_set_gate(16, (uint32_t)exception_handler_16, 0x08, IDT_TYPE_INTERRUPT_GATE); /* x87 FPU floating-point error */
+    idt_set_gate(17, (uint32_t)exception_handler_17, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Alignment check */
+    idt_set_gate(18, (uint32_t)exception_handler_18, 0x08, IDT_TYPE_INTERRUPT_GATE); /* Machine check */
+    idt_set_gate(19, (uint32_t)exception_handler_19, 0x08, IDT_TYPE_INTERRUPT_GATE); /* SIMD floating-point exception */
+    
+    /* Set hardware interrupt handlers (32+) */
     idt_set_gate(32, (uint32_t)irq_handler_timer, 0x08, IDT_TYPE_INTERRUPT_GATE);
     idt_set_gate(33, (uint32_t)irq_handler_keyboard, 0x08, IDT_TYPE_INTERRUPT_GATE);
     
@@ -51,6 +73,7 @@ void interrupts_initialize(void) {
     pic_initialize();
     
     terminal_writeline("IDT initialized successfully!");
+    terminal_writeline("Exception handlers (0-14) and IRQ handlers (32-33) installed.");
 }
 
 /* PIC ports */

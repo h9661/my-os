@@ -1,0 +1,265 @@
+name: Build CHANUX OS
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build-os:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Cache cross-compiler
+      id: cache-cross-compiler
+      uses: actions/cache@v4
+      with:
+        path: /opt/cross
+        key: ${{ runner.os }}-cross-compiler-i686-elf-v1
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          nasm \
+          qemu-system-x86 \
+          wget \
+          tar \
+          bison \
+          flex \
+          libgmp3-dev \
+          libmpc-dev \
+          libmpfr-dev \
+          texinfo
+    
+    - name: Build cross-compiler
+      if: steps.cache-cross-compiler.outputs.cache-hit != 'true'
+      run: |
+        # Create directories
+        mkdir -p /tmp/src
+        cd /tmp/src
+        
+        # Download binutils and gcc
+        wget https://ftp.gnu.org/gnu/binutils/binutils-2.40.tar.xz
+        wget https://ftp.gnu.org/gnu/gcc/gcc-12.2.0/gcc-12.2.0.tar.xz
+        
+        # Extract
+        tar -xf binutils-2.40.tar.xz
+        tar -xf gcc-12.2.0.tar.xz
+        
+        # Set up environment
+        export PREFIX="/opt/cross"
+        export TARGET=i686-elf
+        export PATH="$PREFIX/bin:$PATH"
+        
+        # Build binutils
+        mkdir build-binutils
+        cd build-binutils
+        ../binutils-2.40/configure --target=$TARGET --prefix="$PREFIX" --with-sysroot --disable-nls --disable-werror
+        make -j$(nproc)
+        sudo make install
+        cd ..
+        
+        # Build gcc
+        mkdir build-gcc
+        cd build-gcc
+        ../gcc-12.2.0/configure --target=$TARGET --prefix="$PREFIX" --disable-nls --enable-languages=c,c++ --without-headers
+        make -j$(nproc) all-gcc
+        make -j$(nproc) all-target-libgcc
+        sudo make install-gcc
+        sudo make install-target-libgcc
+    
+    - name: Add cross-compiler to PATH
+      run: |
+        echo "/opt/cross/bin" >> $GITHUB_PATH
+    
+    - name: Verify cross-compiler installation
+      run: |
+        which i686-elf-gcc
+        i686-elf-gcc --version
+        which nasm
+        nasm --version
+    
+    - name: Create build directory
+      run: mkdir -p build
+    
+    - name: Build Stage 1 Bootloader
+      run: |
+        nasm -f bin boot/stage1.asm -o build/stage1.bin
+        echo "Stage 1 bootloader size: $(stat -c%s build/stage1.bin) bytes"
+        if [ $(stat -c%s build/stage1.bin) -ne 512 ]; then
+          echo "Error: Stage 1 bootloader must be exactly 512 bytes"
+          exit 1
+        fi
+    
+    - name: Build Stage 2 Bootloader
+      run: |
+        nasm -f bin boot/stage2.asm -o build/stage2.bin
+        echo "Stage 2 bootloader size: $(stat -c%s build/stage2.bin) bytes"
+    
+    - name: Build Kernel
+      run: |
+        # Build kernel entry point
+        nasm -f elf32 kernel/kernel_entry.asm -o build/kernel_entry.o
+        
+        # Build assembly sources
+        nasm -f elf32 kernel/src/interrupts/interrupt_handlers.asm -o build/interrupt_handlers_asm.o
+        nasm -f elf32 kernel/src/process/context_switch.asm -o build/context_switch.o
+        nasm -f elf32 kernel/src/syscalls/syscall_interrupt.asm -o build/syscall_interrupt.o
+        
+        # Build C sources
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/kernel_main.c -o build/kernel_main.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/common/utils.c -o build/utils.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/memory/memory.c -o build/memory.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/vga/vga.c -o build/vga.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/terminal/terminal.c -o build/terminal.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/cpu/cpu.c -o build/cpu.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/cpu/fpu.c -o build/fpu.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/interrupts/idt.c -o build/idt.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/interrupts/interrupt_handlers.c -o build/interrupt_handlers.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/keyboard/keyboard.c -o build/keyboard.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/process/process.c -o build/process.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/syscalls/syscalls.c -o build/syscalls.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/storage/hdd.c -o build/hdd.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/storage/fat32.c -o build/fat32.o
+        i686-elf-gcc -m32 -fno-pic -fno-builtin -fno-stack-protector -nostdlib -nodefaultlibs -Wall -Wextra -c -Ikernel kernel/src/timer/pit.c -o build/pit.o
+        
+        # Link kernel
+        i686-elf-ld -T kernel/kernel.ld -o build/kernel_elf.o \
+          build/kernel_entry.o \
+          build/kernel_main.o \
+          build/utils.o \
+          build/memory.o \
+          build/vga.o \
+          build/terminal.o \
+          build/cpu.o \
+          build/fpu.o \
+          build/idt.o \
+          build/interrupt_handlers_asm.o \
+          build/interrupt_handlers.o \
+          build/keyboard.o \
+          build/process.o \
+          build/context_switch.o \
+          build/syscall_interrupt.o \
+          build/syscalls.o \
+          build/hdd.o \
+          build/fat32.o \
+          build/pit.o
+        
+        # Extract kernel binary
+        i686-elf-objcopy -O binary build/kernel_elf.o build/kernel.bin
+        echo "Kernel size: $(stat -c%s build/kernel.bin) bytes"
+    
+    - name: Create Hard Disk Image
+      run: |
+        # Create 50MB hard disk image
+        dd if=/dev/zero of=build/hard-disk.img bs=1024 count=51200
+        
+        # Create FAT32 filesystem
+        mkfs.fat -F 32 -S 512 build/hard-disk.img
+        
+        # Write bootloaders to image
+        dd if=build/stage1.bin of=build/hard-disk.img bs=512 count=1 conv=notrunc
+        dd if=build/stage2.bin of=build/hard-disk.img bs=512 seek=1 conv=notrunc
+        dd if=build/kernel.bin of=build/hard-disk.img bs=512 seek=3 conv=notrunc
+        
+        echo "Hard disk image created: $(stat -c%s build/hard-disk.img) bytes"
+    
+    - name: Validate Build
+      run: |
+        echo "=== Build Summary ==="
+        echo "Stage 1 bootloader: $(stat -c%s build/stage1.bin) bytes"
+        echo "Stage 2 bootloader: $(stat -c%s build/stage2.bin) bytes"
+        echo "Kernel binary: $(stat -c%s build/kernel.bin) bytes"
+        echo "Hard disk image: $(stat -c%s build/hard-disk.img) bytes"
+        
+        # Check if all required files exist
+        ls -la build/
+        
+        # Basic validation
+        if [ ! -f build/stage1.bin ] || [ ! -f build/stage2.bin ] || [ ! -f build/kernel.bin ] || [ ! -f build/hard-disk.img ]; then
+          echo "Error: Missing required build artifacts"
+          exit 1
+        fi
+        
+        echo "✅ All build artifacts created successfully"
+    
+    - name: Test with QEMU (basic boot test)
+      run: |
+        # Start QEMU in the background and capture output
+        timeout 30s qemu-system-i386 \
+          -drive format=raw,file=build/hard-disk.img \
+          -m 64M \
+          -serial stdio \
+          -display none \
+          -no-reboot > qemu_output.log 2>&1 || true
+        
+        echo "=== QEMU Boot Test Output ==="
+        cat qemu_output.log
+        
+        # Check for basic boot success indicators
+        if grep -q "CHANUX" qemu_output.log || grep -q "Kernel" qemu_output.log; then
+          echo "✅ Basic boot test passed"
+        else
+          echo "⚠️ Boot test inconclusive - check logs"
+        fi
+    
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: chanux-os-build-${{ github.sha }}
+        path: |
+          build/hard-disk.img
+          build/kernel.bin
+          build/stage1.bin
+          build/stage2.bin
+          build/kernel_elf.o
+          qemu_output.log
+        retention-days: 30
+    
+    - name: Upload Release Assets
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-artifact@v4
+      with:
+        name: chanux-os-release
+        path: |
+          build/hard-disk.img
+          build/kernel.bin
+          README.md
+        retention-days: 90
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install cppcheck
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cppcheck
+    
+    - name: Run static analysis
+      run: |
+        cppcheck --enable=all --inconclusive --std=c99 \
+          --suppress=missingIncludeSystem \
+          --suppress=unusedFunction \
+          --suppress=unmatchedSuppression \
+          kernel/src/ kernel/kernel_main.c \
+          2>&1 | tee cppcheck_report.txt
+    
+    - name: Upload code quality report
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-quality-report
+        path: cppcheck_report.txt

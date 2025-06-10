@@ -134,6 +134,9 @@ hdd_result_t hdd_write_sectors(uint8_t drive, uint32_t lba, uint8_t sector_count
 hdd_result_t hdd_read_sector(uint8_t drive, uint32_t lba, void* buffer);
 hdd_result_t hdd_write_sector(uint8_t drive, uint32_t lba, const void* buffer);
 
+/* Get drive size */
+hdd_result_t hdd_get_drive_size(uint8_t drive, uint32_t* total_sectors);
+
 /* Utility functions */
 bool hdd_wait_ready(uint16_t base_port);
 bool hdd_wait_drq(uint16_t base_port);

@@ -527,4 +527,20 @@ const char* hdd_get_error_string(hdd_result_t error) {
         default:
             return "Unknown error";
     }
+}/* Get drive size in sectors */
+hdd_result_t hdd_get_drive_size(uint8_t drive, uint32_t* total_sectors) {
+    hdd_drive_info_t* drive_info;
+    
+    if (!total_sectors) {
+        return HDD_ERROR_BUFFER_NULL;
+    }
+    
+    /* Get drive information */
+    drive_info = hdd_get_drive_info(drive);
+    if (!drive_info) {
+        return HDD_ERROR_INVALID_DRIVE;
+    }
+    
+    *total_sectors = drive_info->total_sectors;
+    return HDD_SUCCESS;
 }

@@ -86,6 +86,7 @@ void process_init(void);
 process_t* process_create(const char* name, void (*entry_point)(void), process_priority_t priority);
 process_t* process_fork(process_t* parent);
 void process_terminate(process_t* process);
+void process_set_zombie(process_t* process);
 int process_kill(process_t* process, int signal);
 int process_wait(process_t* parent, pid_t child_pid);
 int process_exec(process_t* process, const char* path, char* const argv[]);

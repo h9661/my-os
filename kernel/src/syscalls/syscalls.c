@@ -62,6 +62,10 @@ void sys_exit(int exit_code) {
         strcat(msg, code_str);
         terminal_writeline(msg);
         
+        /* Set exit code before terminating */
+        current->exit_code = exit_code;
+        
+        /* Terminate the process (this will call scheduler_switch_process internally) */
         process_terminate(current);
         scheduler_switch_process();
     }

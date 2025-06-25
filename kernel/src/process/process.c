@@ -4,6 +4,7 @@
 #include "../../include/timer/pit.h"
 #include "../../include/memory/memory.h"
 #include "../../include/vga/vga.h"
+#include "../../include/syscalls/syscalls.h"
 
 /* Global process table */
 static process_t process_table[MAX_PROCESSES];
@@ -24,6 +25,33 @@ static void process_cleanup(process_t* process);
 static void scheduler_update_sleeping_processes(void);
 static process_t* scheduler_get_next_process(void);
 static void process_setup_stack(process_t* process, void (*entry_point)(void));
+
+/* Process wrapper function to handle automatic cleanup when process returns */
+static void process_wrapper(void (*entry_point)(void)) {
+    /* Call the actual process function */
+    if (entry_point) {
+        entry_point();
+    }
+    
+    /* If process returns without calling exit, automatically clean up */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK));
+    terminal_writestring("[KERNEL] Process ");
+    
+    process_t* current = get_current_process();
+    if (current) {
+        terminal_writestring(current->name);
+        terminal_writestring(" (PID ");
+        char pid_str[16];
+        int_to_string(current->pid, pid_str);
+        terminal_writestring(pid_str);
+        terminal_writestring(")");
+    }
+    terminal_writeline(" returned without calling exit, auto-terminating");
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    
+    /* Automatically call sys_exit with status 0 */
+    sys_exit(0);
+}
 
 /* Initialize process management system */
 void process_init(void) {
@@ -110,6 +138,9 @@ process_t* process_create(const char* name, void (*entry_point)(void), process_p
     /* Add to scheduler */
     scheduler_add_process(process);
     
+    /* Increment total process count */
+    scheduler.num_processes++;
+    
     return process;
 }
 
@@ -118,10 +149,27 @@ static void process_setup_stack(process_t* process, void (*entry_point)(void)) {
     /* Initialize registers */
     memset(&process->regs, 0, sizeof(process_regs_t));
     
-    /* Set initial register values */
-    process->regs.eip = (uint32_t)entry_point;
-    process->regs.esp = process->stack_base + process->stack_size - 4;
-    process->regs.ebp = process->regs.esp;
+    /* If entry_point is provided, wrap it with process_wrapper for automatic cleanup */
+    if (entry_point) {
+        /* Set up stack to call process_wrapper with entry_point as parameter */
+        uint32_t* stack_ptr = (uint32_t*)(process->stack_base + process->stack_size);
+        
+        /* Push entry_point as parameter for process_wrapper */
+        *(--stack_ptr) = (uint32_t)entry_point;
+        
+        /* Push return address (should never be reached) */
+        *(--stack_ptr) = 0xDEADBEEF; /* Invalid return address to catch errors */
+        
+        /* Set initial register values to call process_wrapper */
+        process->regs.eip = (uint32_t)process_wrapper;
+        process->regs.esp = (uint32_t)stack_ptr;
+        process->regs.ebp = process->regs.esp;
+    } else {
+        /* For processes without entry point (like idle), set up normally */
+        process->regs.eip = 0;
+        process->regs.esp = process->stack_base + process->stack_size - 4;
+        process->regs.ebp = process->regs.esp;
+    }
     process->regs.eflags = 0x202; /* Enable interrupts flag */
     
     /* Set segment registers to kernel data segment */
@@ -167,8 +215,37 @@ void process_terminate(process_t* process) {
         return;
     }
     
-    /* Set process state */
+    /* Log process termination */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK));
+    terminal_writestring("[KERNEL] Terminating process ");
+    terminal_writestring(process->name);
+    terminal_writestring(" (PID ");
+    char pid_str[16];
+    int_to_string(process->pid, pid_str);
+    terminal_writestring(pid_str);
+    terminal_writestring(") - Exit code: ");
+    char exit_str[16];
+    int_to_string(process->exit_code, exit_str);
+    terminal_writeline(exit_str);
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    
+    /* Set process state to terminated */
     process->state = PROCESS_STATE_TERMINATED;
+    
+    /* Notify parent process if it's waiting */
+    if (process->parent && process->parent->state == PROCESS_STATE_BLOCKED) {
+        /* Check if parent is waiting for this specific child */
+        /* In a real implementation, we'd have a proper wait queue */
+        process_wake_up(process->parent);
+    }
+    
+    /* Handle orphaned child processes - reassign to init/idle process */
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_slots_used[i] && process_table[i].parent == process) {
+            process_table[i].parent = idle_process;
+            process_table[i].parent_pid = idle_process ? idle_process->pid : 0;
+        }
+    }
     
     /* Remove from scheduler queues */
     scheduler_remove_process(process);
@@ -176,8 +253,41 @@ void process_terminate(process_t* process) {
     /* Cleanup process resources */
     process_cleanup(process);
     
+    /* Print remaining processes for debugging */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK));
+    terminal_writestring("[DEBUG] Remaining processes: ");
+    char count_str[16];
+    int_to_string(scheduler.num_processes, count_str);
+    terminal_writeline(count_str);
+    
+    /* List all remaining processes */
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (process_slots_used[i] && &process_table[i] != process) {
+            terminal_writestring("  - ");
+            terminal_writestring(process_table[i].name);
+            terminal_writestring(" (PID ");
+            char pid_str[16];
+            int_to_string(process_table[i].pid, pid_str);
+            terminal_writestring(pid_str);
+            terminal_writestring(", State: ");
+            switch (process_table[i].state) {
+                case PROCESS_STATE_READY: terminal_writestring("READY"); break;
+                case PROCESS_STATE_RUNNING: terminal_writestring("RUNNING"); break;
+                case PROCESS_STATE_BLOCKED: terminal_writestring("BLOCKED"); break;
+                case PROCESS_STATE_SLEEPING: terminal_writestring("SLEEPING"); break;
+                case PROCESS_STATE_TERMINATED: terminal_writestring("TERMINATED"); break;
+                default: terminal_writestring("UNKNOWN"); break;
+            }
+            terminal_writeline(")");
+        }
+    }
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+    
     /* If this is current process, schedule next one */
     if (process == scheduler.current_process) {
+        terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK));
+        terminal_writeline("[DEBUG] Switching to next process...");
+        terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
         scheduler.current_process = NULL;
         scheduler_switch_process();
     }
@@ -342,6 +452,30 @@ void process_unblock(process_t* process) {
     scheduler_add_process(process);
 }
 
+/* Set process to zombie state (for parent to collect exit status) */
+void process_set_zombie(process_t* process) {
+    if (!process) {
+        return;
+    }
+    
+    process->state = PROCESS_STATE_ZOMBIE;
+    
+    /* Keep process in table for parent to wait() on it */
+    /* Remove from all queues but don't cleanup yet */
+    scheduler_remove_process(process);
+    
+    /* Log zombie transition */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_BROWN, VGA_COLOR_BLACK));
+    terminal_writestring("[KERNEL] Process ");
+    terminal_writestring(process->name);
+    terminal_writestring(" (PID ");
+    char pid_str[16];
+    int_to_string(process->pid, pid_str);
+    terminal_writestring(pid_str);
+    terminal_writeline(") became zombie - waiting for parent");
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+}
+
 /* Get current running process */
 process_t* get_current_process(void) {
     return scheduler.current_process;
@@ -445,6 +579,10 @@ void scheduler_switch_process(void) {
     if (old_process && old_process != new_process) {
         /* Context switch implemented in assembly */
         context_switch(&old_process->regs, &new_process->regs);
+    }
+    else{
+        /* old_process is null. so context switch to new_process */
+        context_switch(NULL, &new_process->regs);
     }
 }
 
@@ -621,6 +759,16 @@ void test_process_a(void) {
             terminal_writeline("");
             terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
         }
+
+        /* Test automatic cleanup when process returns */
+        if(counter / 1000 == 10)
+        {
+            terminal_setcolor(vga_entry_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK));
+            terminal_writestring("[Process A] Returning after 10 iterations (testing auto-cleanup).");
+            terminal_writeline("");
+            terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
+            return; /* This will trigger process_wrapper auto-cleanup */
+        } 
         
         /* Yield to other processes every 100 iterations */
         if (counter % 100 == 0) {
@@ -664,6 +812,10 @@ void process_test_context_switching(void) {
     process_t* proc_a = process_create("test_proc_a", test_process_a, PROCESS_PRIORITY_NORMAL);
     if (proc_a) {
         terminal_writeline("Test process A created successfully");
+        char buffer[64];
+        terminal_writestring("Process A PID: ");
+        int_to_string(proc_a->pid, buffer);
+        terminal_writeline(buffer);
     } else {
         terminal_writeline("Failed to create test process A");
         return;
@@ -673,10 +825,22 @@ void process_test_context_switching(void) {
     process_t* proc_b = process_create("test_proc_b", test_process_b, PROCESS_PRIORITY_NORMAL);
     if (proc_b) {
         terminal_writeline("Test process B created successfully");
+        char buffer[64];
+        terminal_writestring("Process B PID: ");
+        int_to_string(proc_b->pid, buffer);
+        terminal_writeline(buffer);
     } else {
         terminal_writeline("Failed to create test process B");
         return;
     }
+    
+    /* Print current scheduler state */
+    terminal_setcolor(vga_entry_color(VGA_COLOR_CYAN, VGA_COLOR_BLACK));
+    terminal_writestring("Total processes in scheduler: ");
+    char count_str[16];
+    int_to_string(scheduler.num_processes, count_str);
+    terminal_writeline(count_str);
+    terminal_setcolor(vga_entry_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK));
     
     /* Enable preemptive scheduling */
     scheduler_set_preemption(true);
